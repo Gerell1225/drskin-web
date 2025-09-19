@@ -1,6 +1,7 @@
+"use client";
+
 import { Box, Button, Typography } from "@mui/material";
 import Link from "next/link";
-
 
 const Hero = () => {
   return (
@@ -9,7 +10,6 @@ const Hero = () => {
       sx={{
         height: { xs: "70vh", md: "100vh" }, // taller for impact
         width: "100%",
-        backgroundImage: "url('/HeroPic.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         display: "flex",

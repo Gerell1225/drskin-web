@@ -1,6 +1,7 @@
+"use client";
+
 import { Box, Container, Typography } from "@mui/material";
 import BranchList from "./BranchList";
-
 
 const Footer = () => {
   return (
