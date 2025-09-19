@@ -103,7 +103,7 @@ const Header = () => {
           </Button>
           <Button
             component={Link}
-            href="/booking"
+            href="/"
             sx={{
               color: "inherit",
               fontSize: { xs: "0.75rem", md: "0.9rem" },

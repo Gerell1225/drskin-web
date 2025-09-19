@@ -45,7 +45,7 @@ const Hero = () => {
         <Button
           variant="outlined"
           component={Link}
-          href="/booking"
+          href="/"
           sx={{
             borderColor: "white",
             color: "white",
