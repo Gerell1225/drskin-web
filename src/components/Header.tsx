@@ -46,7 +46,7 @@ const Header = () => {
         disableGutters
         sx={{
           flexDirection: { xs: "column", md: "row" },
-          alignItems: { xs: "flex-start", md: "center" },
+          alignItems: { xs: "center", md: "center" },
           justifyContent: "space-between",
           width: "100%",
           py: { xs: 1, md: 0 },
