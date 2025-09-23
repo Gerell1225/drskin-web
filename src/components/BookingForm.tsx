@@ -13,12 +13,13 @@ import {
   Card,
   CardActionArea,
   CardContent,
+  TextField,
 } from "@mui/material";
 import { DatePicker } from "@mui/x-date-pickers";
 import { Dayjs } from "dayjs";
 import { supabase } from "@/lib/supabaseClient";
 
-const steps = ["Үйлчилгээ", "Салбар", "Огноо", "Цаг"];
+const steps = ["Үйлчилгээ", "Салбар", "Огноо", "Цаг", "Холбоо барих"];
 
 interface Service {
   id: number;
@@ -30,7 +31,7 @@ interface Branch {
   id: number;
   title: string;
   description: string;
-  phone?: string | null;
+  phone?: string[] | string | null;
 }
 
 const generateTimeSlots = () => {
@@ -50,6 +51,8 @@ export default function BookingForm() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [date, setDate] = useState<Dayjs | null>(null);
   const [time, setTime] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [services, setServices] = useState<Service[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -80,6 +83,8 @@ export default function BookingForm() {
           service_id: service.id,
           branch_id: branch.id,
           booking_time: `${bookingDate}T${time}:00+08:00`,
+          name,
+          phone,
           status: "pending",
           payment_status: "unpaid",
         },
@@ -91,12 +96,14 @@ export default function BookingForm() {
         return;
       }
 
-      alert("Таны цагийг бүртгэлээ!");
+      alert("Таны цагийг бүртгэлээ! Манай ажилтан тантай холбогдоно.");
       setActiveStep(0);
       setService(null);
       setBranch(null);
       setDate(null);
       setTime(null);
+      setName("");
+      setPhone("");
     } else {
       setActiveStep((prev) => prev + 1);
     }
@@ -115,6 +122,7 @@ export default function BookingForm() {
           </Step>
         ))}
       </Stepper>
+
       <Box sx={{ mt: 4 }}>
         {activeStep === 0 && (
           <Grid container spacing={2}>
@@ -150,54 +158,55 @@ export default function BookingForm() {
             ))}
           </Grid>
         )}
+
         {activeStep === 1 && (
           <Grid container spacing={2}>
-            {branches.map((b) => (
-              <Grid item xs={12} sm={6} key={b.id}>
-                <Card
-                  sx={{
-                    bgcolor: branch?.id === b.id ? "#333" : "white",
-                    color: branch?.id === b.id ? "white" : "black",
-                    borderLeft:
-                      branch?.id === b.id
-                        ? "4px solid black"
-                        : "1px solid #eee",
-                    boxShadow: 1,
-                    "&:hover": {
-                      boxShadow: 3,
-                      bgcolor: branch?.id === b.id ? "#444" : "#fafafa",
-                    },
-                  }}
-                >
-                  <CardActionArea onClick={() => setBranch(b)}>
-                    <CardContent>
-                      <Typography variant="h6">{b.title}</Typography>
-                      {b.description && (
-                        <Typography
-                          variant="body2"
-                          sx={{ color: branch?.id === b.id ? "white" : "gray" }}
-                        >
+            {branches.map((b) => {
+              const phoneText = Array.isArray(b.phone)
+                ? b.phone.join(", ")
+                : b.phone || "";
+              return (
+                <Grid item xs={12} sm={6} key={b.id}>
+                  <Card
+                    sx={{
+                      bgcolor: branch?.id === b.id ? "#333" : "white",
+                      color: branch?.id === b.id ? "white" : "black",
+                      borderLeft:
+                        branch?.id === b.id
+                          ? "4px solid black"
+                          : "1px solid #eee",
+                      boxShadow: 1,
+                      "&:hover": {
+                        boxShadow: 3,
+                        bgcolor: branch?.id === b.id ? "#444" : "#fafafa",
+                      },
+                    }}
+                  >
+                    <CardActionArea onClick={() => setBranch(b)}>
+                      <CardContent>
+                        <Typography variant="h6">{b.title}</Typography>
+                        <Typography variant="body2" sx={{ mb: 1 }}>
                           {b.description}
                         </Typography>
-                      )}
-                      {b.phone && (
-                        <Typography
-                          variant="body2"
-                          sx={{ color: branch?.id === b.id ? "white" : "gray" }}
-                        >
-                          Утас:{" "}
-                          {Array.isArray(b.phone)
-                            ? b.phone.join(", ")
-                            : b.phone}
-                        </Typography>
-                      )}
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              </Grid>
-            ))}
+                        {phoneText && (
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: branch?.id === b.id ? "white" : "gray",
+                            }}
+                          >
+                            Утас: {phoneText}
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
         )}
+
         {activeStep === 2 && (
           <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
             <DatePicker
@@ -214,6 +223,7 @@ export default function BookingForm() {
             />
           </Box>
         )}
+
         {activeStep === 3 && (
           <Grid container spacing={1}>
             {generateTimeSlots().map((slot) => (
@@ -239,7 +249,31 @@ export default function BookingForm() {
             ))}
           </Grid>
         )}
+
+        {activeStep === 4 && (
+          <Box
+            display="flex"
+            flexDirection="column"
+            gap={2}
+            sx={{ mt: 2, maxWidth: 400, mx: "auto" }}
+          >
+            <TextField
+              label="Нэр"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              fullWidth
+            />
+            <TextField
+              label="Утас"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              fullWidth
+            />
+          </Box>
+        )}
       </Box>
+
+      {/* Navigation */}
       <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
         <Button
           disabled={activeStep === 0}
@@ -267,7 +301,8 @@ export default function BookingForm() {
             (activeStep === 0 && !service) ||
             (activeStep === 1 && !branch) ||
             (activeStep === 2 && !date) ||
-            (activeStep === 3 && !time)
+            (activeStep === 3 && !time) ||
+            (activeStep === 4 && (!name || !phone))
           }
         >
           {activeStep === steps.length - 1 ? "Илгээх" : "Дараах"}
