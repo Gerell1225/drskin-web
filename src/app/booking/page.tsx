@@ -14,7 +14,18 @@ export default function BookingPage() {
           pt: { xs: 12, md: 12 },
           pb: { xs: 6, md: 10 },
           minHeight: "100vh",
+          backgroundImage: "url('/HeroPic.jpg')",
           bgcolor: "rgba(0,0,0,0.45)",
+          height: { xs: "70vh", md: "100vh" },
+          width: "100%",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          color: "white",
+          position: "relative",
         }}
       >
         <Container maxWidth="md">
@@ -43,7 +54,7 @@ export default function BookingPage() {
           </Paper>
         </Container>
       </Box>
-      <Footer/>
+      <Footer />
     </>
   );
 }

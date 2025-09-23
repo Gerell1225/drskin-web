@@ -12,6 +12,7 @@ const Hero = () => {
         width: "100%",
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundImage: "url('/HeroPic.jpg')",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
