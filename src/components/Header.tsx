@@ -101,7 +101,7 @@ const Header = () => {
           </Button>
           <Button
             component={Link}
-            href="/"
+            href="/booking"
             sx={{
               color: "inherit",
               fontSize: { xs: "0.75rem", md: "0.9rem" },

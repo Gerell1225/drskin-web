@@ -1,12 +1,16 @@
 "use client";
-import { ReactNode } from "react";
-import CssBaseline from "@mui/material/CssBaseline";
 
-export default function Providers({ children }: { children: ReactNode }) {
+import { CssBaseline } from "@mui/material";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       <CssBaseline />
-      {children}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        {children}
+      </LocalizationProvider>
     </>
   );
 }

@@ -8,7 +8,7 @@ const Hero = () => {
     <Box
       id="hero"
       sx={{
-        height: { xs: "70vh", md: "100vh" }, // taller for impact
+        height: { xs: "70vh", md: "100vh" },
         width: "100%",
         backgroundSize: "cover",
         backgroundPosition: "center",
@@ -45,7 +45,7 @@ const Hero = () => {
         <Button
           variant="outlined"
           component={Link}
-          href="/"
+          href="/booking"
           sx={{
             borderColor: "white",
             color: "white",

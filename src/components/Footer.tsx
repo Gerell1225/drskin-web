@@ -9,7 +9,7 @@ const Footer = () => {
       id="footer"
       component="footer"
       sx={{
-        bgcolor: "#111", // darker style
+        bgcolor: "#111",
         color: "white",
         py: { xs: 4, md: 6 },
         mt: "auto",
