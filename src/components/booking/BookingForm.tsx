@@ -12,15 +12,31 @@ import TimeStep from "./TimeStep";
 
 const steps = ["Үйлчилгээ", "Салбар", "Огноо", "Цаг", "Холбоо барих"];
 
-export default function BookingForm() {
-  const [activeStep, setActiveStep] = useState(0);
+interface Service {
+  id: number;
+  name: string;
+  category: "skin" | "hair";
+  duration: number;
+}
 
-  const [service, setService] = useState<any | null>(null);
-  const [branch, setBranch] = useState<any | null>(null);
+interface Branch {
+  id: number;
+  title: string;
+  description: string;
+  phone: string[] | string | null;
+  capacity_skin: number;
+  capacity_hair: number;
+}
+
+export default function BookingForm() {
+  const [activeStep, setActiveStep] = useState<number>(0);
+
+  const [service, setService] = useState<Service | null>(null);
+  const [branch, setBranch] = useState<Branch | null>(null);
   const [date, setDate] = useState<Dayjs | null>(null);
   const [time, setTime] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [name, setName] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
 
   const handleSubmit = async () => {
     if (!service || !branch || !date || !time) return;
@@ -46,13 +62,14 @@ export default function BookingForm() {
 
     alert(
       `Амжилттай бүртгэгдлээ!\n\n` +
-        `Үйлчилгээ: ${service?.name}\n` +
-        `Салбар: ${branch?.title}\n` +
-        `Огноо: ${date?.format("YYYY-MM-DD")}\n` +
+        `Үйлчилгээ: ${service.name}\n` +
+        `Салбар: ${branch.title}\n` +
+        `Огноо: ${bookingDate}\n` +
         `Цаг: ${time}\n` +
         `Нэр: ${name}\n` +
         `Утас: ${phone}`,
     );
+
     setActiveStep(0);
     setService(null);
     setBranch(null);
@@ -85,10 +102,17 @@ export default function BookingForm() {
 
         {activeStep === 1 && (
           <BranchStep
-            service={service}
+            service={service!}
             branch={branch}
             setBranch={(b) => {
-              setBranch(b);
+              setBranch({
+                ...b,
+                phone: Array.isArray(b.phone)
+                  ? b.phone
+                  : b.phone
+                    ? [b.phone]
+                    : [],
+              });
               setActiveStep(2);
             }}
           />
@@ -106,9 +130,9 @@ export default function BookingForm() {
 
         {activeStep === 3 && (
           <TimeStep
-            service={service}
-            branch={branch}
-            date={date}
+            service={service!}
+            branch={branch!}
+            date={date!}
             time={time}
             setTime={(t) => {
               setTime(t);
@@ -127,33 +151,12 @@ export default function BookingForm() {
         )}
       </Box>
 
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          mt: 4,
-          gap: 2,
-        }}
-      >
+      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
         <Button
           disabled={activeStep === 0}
           onClick={() => setActiveStep((p) => p - 1)}
           variant="outlined"
-          sx={{
-            flex: 1,
-            borderRadius: 2,
-            py: 1.5,
-            fontWeight: 600,
-            borderColor: "#333",
-            color: "#333",
-            textTransform: "none",
-            fontSize: { xs: "0.9rem", md: "1rem" },
-            "&:hover": {
-              bgcolor: "#333",
-              color: "white",
-              borderColor: "#000",
-            },
-          }}
+          sx={{ color: "#333" }}
         >
           Буцах
         </Button>
@@ -164,21 +167,11 @@ export default function BookingForm() {
             variant="contained"
             disabled={!name || !phone}
             sx={{
-              flex: 1,
-              borderRadius: 2,
-              py: 1.5,
-              fontWeight: 600,
               bgcolor: "#333",
-              color: "white",
-              textTransform: "none",
-              fontSize: { xs: "0.9rem", md: "1rem" },
-              "&:hover": {
-                bgcolor: "#000",
-              },
-              "&.Mui-disabled": {
-                bgcolor: "#aaa",
-                color: "#fff",
-              },
+              "&:hover": { bgcolor: "#000" },
+              borderRadius: 2,
+              px: { xs: 3, md: 4 },
+              fontWeight: 600,
             }}
           >
             Илгээх

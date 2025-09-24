@@ -107,7 +107,7 @@ export default function TimeStep({
         return;
       }
 
-      const typedBookings: Booking[] = (data || []).map((b: any) => ({
+      const typedBookings: Booking[] = (data || []).map((b) => ({
         ...b,
         services: Array.isArray(b.services) ? b.services[0] : b.services,
       }));
