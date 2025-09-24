@@ -1,17 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Stepper, Step, StepLabel, Button } from "@mui/material";
+import {
+  Box,
+  Stepper,
+  Step,
+  StepLabel,
+  Button,
+  Typography,
+  Paper,
+  Divider,
+} from "@mui/material";
 import { Dayjs } from "dayjs";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 import BranchStep from "./BranchStep";
 import ContactStep from "./ContactStep";
 import DayStep from "./DayStep";
 import ServiceStep from "./ServiceStep";
 import TimeStep from "./TimeStep";
 
-const steps = ["Үйлчилгээ", "Салбар", "Огноо", "Цаг", "Холбоо барих"];
-
+const steps = ["Service", "Branch", "Date", "Time", "Contact", "Confirm"];
 interface Service {
   id: number;
   name: string;
@@ -38,6 +47,8 @@ export default function BookingForm() {
   const [name, setName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
 
+  const router = useRouter();
+
   const handleSubmit = async () => {
     if (!service || !branch || !date || !time) return;
 
@@ -60,40 +71,25 @@ export default function BookingForm() {
       return;
     }
 
-    alert(
-      `Амжилттай бүртгэгдлээ!\n\n` +
-        `Үйлчилгээ: ${service.name}\n` +
-        `Салбар: ${branch.title}\n` +
-        `Огноо: ${bookingDate}\n` +
-        `Цаг: ${time}\n` +
-        `Нэр: ${name}\n` +
-        `Утас: ${phone}`,
-    );
-
-    setActiveStep(0);
-    setService(null);
-    setBranch(null);
-    setDate(null);
-    setTime(null);
-    setName("");
-    setPhone("");
+    alert("Таны захиалга амжилттай илгээгдлээ!");
+    router.push("/");
   };
 
   return (
     <Box sx={{ width: "100%", mt: 2 }}>
       <Stepper activeStep={activeStep} alternativeLabel>
         {steps.map((label) => (
-          <Step key={label}>
+          <Step key={label} sx={{ px: { xs: 0.5, md: 1 } }}>
             <StepLabel>{label}</StepLabel>
           </Step>
         ))}
       </Stepper>
 
-      <Box sx={{ mt: 4 }}>
+      <Box sx={{ mt: { xs: 2, md: 4 } }}>
         {activeStep === 0 && (
           <ServiceStep
             service={service}
-            setService={(s) => {
+            setService={(s: Service) => {
               setService(s);
               setActiveStep(1);
             }}
@@ -134,7 +130,7 @@ export default function BookingForm() {
             branch={branch!}
             date={date!}
             time={time}
-            setTime={(t) => {
+            setTime={(t: string) => {
               setTime(t);
               setActiveStep(4);
             }}
@@ -149,29 +145,89 @@ export default function BookingForm() {
             setPhone={setPhone}
           />
         )}
+
+        {activeStep === 5 && (
+          <Paper
+            elevation={2}
+            sx={{ p: 3, maxWidth: 420, mx: "auto", textAlign: "left" }}
+          >
+            <Typography variant="h6" gutterBottom>
+              Захиалгын дэлгэрэнгүй
+            </Typography>
+            <Divider sx={{ mb: 2 }} />
+            <Typography>Үйлчилгээ: {service?.name}</Typography>
+            <Typography>Салбар: {branch?.title}</Typography>
+            <Typography>Огноо: {date?.format("YYYY-MM-DD")}</Typography>
+            <Typography>Цаг: {time}</Typography>
+            <Typography>Нэр: {name}</Typography>
+            <Typography>Утас: {phone}</Typography>
+          </Paper>
+        )}
       </Box>
 
-      <Box sx={{ display: "flex", justifyContent: "space-between", mt: 4 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 2,
+          mt: 4,
+        }}
+      >
         <Button
           disabled={activeStep === 0}
           onClick={() => setActiveStep((p) => p - 1)}
           variant="outlined"
-          sx={{ color: "#333" }}
+          sx={{
+            flex: 1,
+            borderRadius: 1.5,
+            py: 1.2,
+            fontWeight: 500,
+            borderColor: "#333",
+            color: "#333",
+            textTransform: "none",
+            "&:hover": { bgcolor: "#f5f5f5", borderColor: "#000" },
+          }}
         >
           Буцах
         </Button>
+
+        {activeStep < steps.length - 1 && (
+          <Button
+            onClick={() => setActiveStep((p) => p + 1)}
+            variant="contained"
+            disabled={
+              (activeStep === 0 && !service) ||
+              (activeStep === 1 && !branch) ||
+              (activeStep === 2 && !date) ||
+              (activeStep === 3 && !time) ||
+              (activeStep === 4 && (!name || !phone))
+            }
+            sx={{
+              flex: 1,
+              borderRadius: 1.5,
+              py: 1.2,
+              fontWeight: 500,
+              bgcolor: "#333",
+              textTransform: "none",
+              "&:hover": { bgcolor: "#000" },
+            }}
+          >
+            Дараах
+          </Button>
+        )}
 
         {activeStep === steps.length - 1 && (
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={!name || !phone}
             sx={{
+              flex: 1,
+              borderRadius: 1.5,
+              py: 1.2,
+              fontWeight: 500,
               bgcolor: "#333",
+              textTransform: "none",
               "&:hover": { bgcolor: "#000" },
-              borderRadius: 2,
-              px: { xs: 3, md: 4 },
-              fontWeight: 600,
             }}
           >
             Илгээх

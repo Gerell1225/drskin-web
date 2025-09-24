@@ -49,7 +49,7 @@ export default function BookingPage() {
               sx={{
                 fontWeight: 700,
                 textAlign: "center",
-                mb: { xs: 3, md: 4 },
+                mb: { xs: 1, md: 4 },
                 fontSize: { xs: "1.75rem", md: "2.25rem" },
                 textShadow: "1px 1px 4px rgba(0,0,0,0.25)",
               }}
