@@ -6,6 +6,7 @@ import { Box, Button, Typography, Paper } from "@mui/material";
 import BranchList from "@/components/admin/BranchList";
 import ManagersList from "@/components/admin/ManagerList";
 import ServicesList from "@/components/admin/ServicesList";
+import BookingSheet from "@/components/admin/BookingSheet";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -82,7 +83,7 @@ export default function AdminDashboard() {
         {activeTab === "branch" && <BranchList />}
         {activeTab === "service" && <ServicesList />}
         {activeTab === "manager" && <ManagersList />}
-        {activeTab === "booking" && <Typography>Booking Sheet</Typography>}
+        {activeTab === "booking" && <BookingSheet />}
       </Paper>
     </Box>
   );
