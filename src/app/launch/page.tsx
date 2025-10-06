@@ -145,7 +145,7 @@ export default function LaunchPage() {
               },
             }}
           >
-            Вэбсайтыг асаах
+            Вэбсайт асаах
           </Button>
 
           <Typography
