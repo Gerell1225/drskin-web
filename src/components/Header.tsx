@@ -65,7 +65,6 @@ const Header = () => {
         >
           Dr.Skin & Dr.Hair
         </Typography>
-        <Typography>Test</Typography>
         <Box
           sx={{
             display: "flex",
