@@ -58,7 +58,7 @@ const Header = () => {
           href="/"
           style={{
             textDecoration: "none",
-            color: scrolled ? "red" : "inherit",
+            color: scrolled ? "#D42121" : "inherit",
             fontWeight: "bold",
             whiteSpace: "nowrap",
           }}
