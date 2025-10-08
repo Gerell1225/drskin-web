@@ -54,7 +54,6 @@ type Manager = {
   branch_ids: string[];
 };
 
-// ---------- Helpers ----------
 function addMinutes(time: string, minutes: number): string {
   const [h, m] = time.split(":").map(Number);
   const date = new Date(0, 0, 0, h, m);
@@ -213,7 +212,7 @@ export default function BookingSheet() {
       if (date.isSame(dayjs(), "day")) {
         current = roundToNext30(new Date());
       } else {
-        current = "10:00";
+        current = "11:00";
       }
 
       const possible: string[] = [];
