@@ -335,9 +335,9 @@ export default function BookingSheet() {
       <BookingGrid
         bookings={bookings.filter((b) => b.service.category === "skin")}
         beds={beds.skin}
-        timeSlots={Array.from({ length: 22 }, (_, i) =>
+        timeSlots={Array.from({ length: 20 }, (_, i) =>
           dayjs()
-            .hour(10)
+            .hour(11)
             .minute(0)
             .add(i * 30, "minute"),
         )}
@@ -350,9 +350,9 @@ export default function BookingSheet() {
       <BookingGrid
         bookings={bookings.filter((b) => b.service.category === "hair")}
         beds={beds.hair}
-        timeSlots={Array.from({ length: 22 }, (_, i) =>
+        timeSlots={Array.from({ length: 20 }, (_, i) =>
           dayjs()
-            .hour(10)
+            .hour(11)
             .minute(0)
             .add(i * 30, "minute"),
         )}
