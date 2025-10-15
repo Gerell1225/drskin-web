@@ -116,11 +116,11 @@ export default function TimeStep({
       if (date.isSame(dayjs(), "day")) {
         current = roundToNext30(new Date());
       } else {
-        current = "10:00";
+        current = "11:00";
       }
 
       const possible: string[] = [];
-      while (addMinutes(current, service.duration) <= "20:00") {
+      while (addMinutes(current, service.duration) <= "19:30") {
         possible.push(current);
         current = addMinutes(current, 30);
       }

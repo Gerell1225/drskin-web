@@ -216,7 +216,7 @@ export default function BookingSheet() {
       }
 
       const possible: string[] = [];
-      while (addMinutes(current, service.duration) <= "21:00") {
+      while (addMinutes(current, service.duration) <= "20:00") {
         possible.push(current);
         current = addMinutes(current, 30);
       }
