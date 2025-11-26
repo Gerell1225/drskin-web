@@ -1,23 +1,14 @@
-import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react";
-import Providers from "./providers";
+import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "DrSkin & DrHair Salon",
-  description: "Premium skin & hair care salon in Ulaanbaatar",
+export const metadata = {
+  title: "DrSkin & DrHair — Premium care",
+  description: "Online booking for DrSkin & DrHair in Ulaanbaatar",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="mn">
-      <body>
-        <Providers>{children}</Providers>
-        <Analytics />
-      </body>
+    <html lang="mn" className="scroll-smooth">
+      <body>{children}</body>
     </html>
   );
 }
