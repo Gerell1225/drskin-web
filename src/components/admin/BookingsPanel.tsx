@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { repo } from "./repo";
 import { Booking } from "./types";
 import { Modal } from "./ui/Modal";
 import { Toast } from "./ui/Toast";
 import { bookingSchema, bookingCapacityOk, priceLookup, formatMoney } from "./utils";
 
+const defaultTime = "13:00";
 
-export function BookingsPanel() {
-  const [bookings, setBookings] = useState(repo.listBookings());
-  const [branches] = useState(repo.listBranches());
-  const [services] = useState(repo.listServices());
-  const [prices] = useState(repo.listPrices());
+type Props = {
+  query: string;
+};
+
+export function BookingsPanel({ query }: Props) {
+  const [bookings, setBookings] = useState(repo.bookings.list());
+  const [branches] = useState(repo.branches.list());
+  const [services] = useState(repo.services.list());
+  const [prices] = useState(repo.pricing.list());
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [modalOpen, setModalOpen] = useState(false);
@@ -21,8 +26,17 @@ export function BookingsPanel() {
   const [error, setError] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    return bookings.filter((b) => (selectedBranch === "all" || b.branchId === selectedBranch) && b.dateISO === selectedDate);
-  }, [bookings, selectedBranch, selectedDate]);
+    const q = query.toLowerCase().trim();
+    return bookings.filter((b) => {
+      const matchesBranch = selectedBranch === "all" || b.branchId === selectedBranch;
+      const matchesDate = b.dateISO === selectedDate;
+      const serviceName = services.find((s) => s.id === b.serviceId)?.name ?? "";
+      const searchHit = !q
+        ? true
+        : [b.customer, b.phone, serviceName].some((field) => field.toLowerCase().includes(q));
+      return matchesBranch && matchesDate && searchHit;
+    });
+  }, [bookings, query, selectedBranch, selectedDate, services]);
 
   const grouped = useMemo(() => {
     const byBranch: Record<string, Booking[]> = {};
@@ -40,7 +54,7 @@ export function BookingsPanel() {
       branchId: branches[0]?.id ?? "",
       serviceId: services[0]?.id ?? "",
       dateISO: selectedDate,
-      time: "13:00",
+      time: defaultTime,
       partySize: 1,
       status: "pending",
       paid: false,
@@ -65,27 +79,35 @@ export function BookingsPanel() {
       setError("Багтаамж дүүрсэн");
       return;
     }
-    repo.upsertBooking(payload);
-    setBookings(repo.listBookings());
+    repo.bookings.upsert(payload);
+    setBookings(repo.bookings.list());
     setToast("Захиалга хадгаллаа");
     setModalOpen(false);
     setError(null);
   };
 
-  const inlineUpdate = (booking: Booking) => {
-    repo.upsertBooking(booking);
-    setBookings(repo.listBookings());
+  const inlineStatus = (id: string, status: Booking["status"]) => {
+    repo.bookings.setStatus(id, status);
+    setBookings(repo.bookings.list());
+  };
+
+  const inlineTime = (id: string, time: string) => {
+    repo.bookings.setTime(id, time);
+    setBookings(repo.bookings.list());
   };
 
   const togglePaid = async (booking: Booking) => {
     const endpoint = booking.paid ? "/api/qpay/refund" : "/api/qpay/invoice";
     await fetch(endpoint, { method: "POST", body: JSON.stringify({ bookingId: booking.id }) });
-    inlineUpdate({ ...booking, paid: !booking.paid });
+    repo.bookings.togglePaid(booking.id);
+    setBookings(repo.bookings.list());
     setToast(booking.paid ? "Төлбөр буцаалаа" : "Төлбөр баталгаажсан");
   };
 
+  const formId = "booking-form";
+
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="card">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Захиалгууд</h2>
@@ -123,24 +145,26 @@ export function BookingsPanel() {
         </label>
       </div>
 
-      <div className="mt-4 grid gap-4">
+      <div className="mt-4 space-y-3">
         {Object.entries(grouped).map(([branchId, list]) => {
           const branch = branches.find((b) => b.id === branchId);
           return (
-            <div key={branchId} className="rounded-xl border bg-white shadow-sm">
-              <div className="flex items-center justify-between border-b px-3 py-2">
-                <div className="font-semibold">{branch?.title ?? "Салбар"}</div>
-                <div className="text-sm text-gray-600">{branch?.hours}</div>
+            <div key={branchId} className="rounded-2xl border bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b px-4 py-3">
+                <div>
+                  <h3 className="font-semibold">{branch?.title}</h3>
+                  <p className="text-xs text-gray-500">{list.length} бичлэг</p>
+                </div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="sticky top-0 bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <table className="min-w-[900px] text-sm">
+                  <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
                     <tr>
                       <th className="p-3">Цаг</th>
                       <th className="p-3">Үйлчилгээ</th>
-                      <th className="p-3">Нэр</th>
+                      <th className="p-3">Захиалагч</th>
                       <th className="p-3">Утас</th>
-                      <th className="p-3">Зочин</th>
+                      <th className="p-3">Тоон</th>
                       <th className="p-3">Төлөв</th>
                       <th className="p-3">Төлбөр</th>
                       <th className="p-3">Үнэ</th>
@@ -158,19 +182,19 @@ export function BookingsPanel() {
                               <input
                                 className="rounded-lg border px-2 py-1"
                                 value={bk.time}
-                                onChange={(e) => inlineUpdate({ ...bk, time: e.target.value })}
+                                onChange={(e) => inlineTime(bk.id, e.target.value)}
                                 type="time"
                               />
                             </td>
-                            <td className="max-w-[160px] truncate p-3">{service?.name}</td>
-                            <td className="max-w-[140px] truncate p-3 font-medium">{bk.customer}</td>
+                            <td className="max-w-[220px] truncate p-3">{service?.name}</td>
+                            <td className="max-w-[220px] truncate p-3 font-medium">{bk.customer}</td>
                             <td className="p-3">{bk.phone}</td>
                             <td className="p-3">{bk.partySize}</td>
                             <td className="p-3">
                               <select
                                 className="rounded-lg border px-2 py-1"
                                 value={bk.status}
-                                onChange={(e) => inlineUpdate({ ...bk, status: e.target.value as Booking["status"] })}
+                                onChange={(e) => inlineStatus(bk.id, e.target.value as Booking["status"])}
                               >
                                 <option value="pending">Хүлээгдэж</option>
                                 <option value="confirmed">Батлагдсан</option>
@@ -202,9 +226,18 @@ export function BookingsPanel() {
         )}
       </div>
 
-      <Modal open={modalOpen} title="Захиалга нэмэх" onClose={() => setModalOpen(false)}>
+      <Modal
+        open={modalOpen}
+        title="Захиалга нэмэх"
+        onClose={() => setModalOpen(false)}
+        actions={
+          <button form={formId} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm">
+            Хадгалах
+          </button>
+        }
+      >
         {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
-        <form className="grid gap-3" action={onSave}>
+        <form className="grid gap-3" action={onSave} id={formId}>
           <input type="hidden" name="id" defaultValue={editing?.id} />
           <label className="grid gap-1 text-sm">
             Өдөр
@@ -212,7 +245,7 @@ export function BookingsPanel() {
           </label>
           <label className="grid gap-1 text-sm">
             Цаг
-            <input name="time" type="time" defaultValue={editing?.time} className="rounded-lg border p-2" />
+            <input name="time" type="time" defaultValue={editing?.time ?? defaultTime} className="rounded-lg border p-2" />
           </label>
           <label className="grid gap-1 text-sm">
             Салбар
@@ -257,7 +290,6 @@ export function BookingsPanel() {
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" name="paid" defaultChecked={editing?.paid} /> Төлбөр төлсөн
           </label>
-          <button className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">Хадгалах</button>
         </form>
       </Modal>
 

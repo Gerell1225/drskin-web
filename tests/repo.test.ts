@@ -4,25 +4,25 @@ import { repo } from "@/components/admin/repo";
 describe("repo", () => {
   it("upserts branches", () => {
     const id = "new-branch";
-    repo.upsertBranch({ id, title: "Test", address: "Addr", phone: "123", hours: "9-18", bedsSkin: 1, bedsHair: 1 });
-    const list = repo.listBranches();
+    repo.branches.upsert({ id, title: "Test", address: "Addr", phone: "123", hours: "9-18", bedsSkin: 1, bedsHair: 1 });
+    const list = repo.branches.list();
     expect(list.some((b) => b.id === id)).toBe(true);
-    repo.removeBranch(id);
-    expect(repo.listBranches().some((b) => b.id === id)).toBe(false);
+    repo.branches.remove(id);
+    expect(repo.branches.list().some((b) => b.id === id)).toBe(false);
   });
 
   it("manages services and prices", () => {
     const serviceId = "sv-test";
-    repo.upsertService({ id: serviceId, name: "Test", category: "Cat", durationMin: 30, kind: "skin" });
-    repo.upsertPrice({ branchId: "b1", serviceId, price: 1234 });
-    expect(repo.listPrices().find((p) => p.serviceId === serviceId)?.price).toBe(1234);
-    repo.removeService(serviceId);
-    expect(repo.listServices().some((s) => s.id === serviceId)).toBe(false);
+    repo.services.upsert({ id: serviceId, name: "Test", category: "Cat", durationMin: 30, kind: "skin" });
+    repo.pricing.upsert({ branchId: "b1", serviceId, price: 1234 });
+    expect(repo.pricing.list().find((p) => p.serviceId === serviceId)?.price).toBe(1234);
+    repo.services.remove(serviceId);
+    expect(repo.services.list().some((s) => s.id === serviceId)).toBe(false);
   });
 
   it("handles bookings lifecycle", () => {
     const id = "bk-test";
-    repo.upsertBooking({
+    repo.bookings.upsert({
       id,
       customer: "Test",
       phone: "9900",
@@ -34,8 +34,8 @@ describe("repo", () => {
       status: "pending",
       paid: false,
     });
-    expect(repo.listBookings().some((b) => b.id === id)).toBe(true);
-    repo.removeBooking(id);
-    expect(repo.listBookings().some((b) => b.id === id)).toBe(false);
+    expect(repo.bookings.list().some((b) => b.id === id)).toBe(true);
+    repo.bookings.remove(id);
+    expect(repo.bookings.list().some((b) => b.id === id)).toBe(false);
   });
 });
