@@ -1,28 +1,91 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root{
-  --brand:#D42121;
-  --bg-soft-1:
-    radial-gradient(1200px 600px at 80% -10%, #ffe6e6 0%, transparent 60%),
+:root {
+  --brand: #d42121;
+  --bg-soft-1: radial-gradient(1200px 600px at 80% -10%, #ffe6e6 0%, transparent 60%),
     radial-gradient(800px 400px at -10% 10%, #fff3f3 0%, transparent 50%);
   color-scheme: light;
 }
 
-html { scroll-behavior: smooth; }
-body { @apply antialiased text-[#0f0f0f]; background-image: var(--bg-soft-1); }
+html {
+  scroll-behavior: smooth;
+}
 
-::selection { background: rgba(212,33,33,0.2); }
+body {
+  -webkit-font-smoothing: antialiased;
+  color: #0f0f0f;
+  background-image: var(--bg-soft-1);
+}
 
-.btn-brand { @apply inline-flex items-center justify-center px-4 py-2 rounded-2xl text-white font-medium shadow-sm; background: var(--brand); }
-.btn-outline { @apply inline-flex items-center justify-center px-3 py-2 rounded-xl border text-sm; }
+::selection {
+  background: rgba(212, 33, 33, 0.2);
+}
 
-.card { @apply rounded-2xl border bg-white shadow-sm; }
-.card-hover { @apply transition hover:shadow-md; }
+.btn-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background: var(--brand);
+}
 
-*::-webkit-scrollbar { width: 10px; height: 10px; }
-*::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 9999px; }
-*::-webkit-scrollbar-thumb:hover { background: #bbbbbb; }
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
 
-.badge { @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs; }
-.input { @apply w-full rounded-xl border px-3 py-2.5; }
+.card {
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
 
+.card-hover {
+  transition: box-shadow 150ms ease;
+}
+
+.card-hover:hover {
+  box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.06);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #bbbbbb;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+}
+
+.input {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.625rem 0.75rem;
+}

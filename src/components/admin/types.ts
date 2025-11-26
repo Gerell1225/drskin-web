@@ -49,23 +49,32 @@ export type Customer = {
 };
 
 export type Repo = {
-  listBranches: () => Branch[];
-  upsertBranch: (branch: Branch) => Branch;
-  removeBranch: (id: string) => void;
-
-  listServices: () => Service[];
-  upsertService: (service: Service) => Service;
-  removeService: (id: string) => void;
-
-  listPrices: () => BranchService[];
-  upsertPrice: (price: BranchService) => BranchService;
-  removePrice: (branchId: string, serviceId: string) => void;
-
-  listBookings: () => Booking[];
-  upsertBooking: (booking: Booking) => Booking;
-  removeBooking: (id: string) => void;
-
-  listCustomers: () => Customer[];
-  upsertCustomer: (customer: Customer) => Customer;
-  removeCustomer: (id: string) => void;
+  branches: {
+    list: () => Branch[];
+    upsert: (branch: Branch) => Branch;
+    remove: (id: string) => void;
+  };
+  services: {
+    list: () => Service[];
+    upsert: (service: Service) => Service;
+    remove: (id: string) => void;
+  };
+  pricing: {
+    list: () => BranchService[];
+    upsert: (price: BranchService) => BranchService;
+    remove: (branchId: string, serviceId: string) => void;
+  };
+  bookings: {
+    list: () => Booking[];
+    upsert: (booking: Booking) => Booking;
+    remove: (id: string) => void;
+    setStatus: (id: string, status: Booking["status"]) => void;
+    togglePaid: (id: string) => void;
+    setTime: (id: string, time: string) => void;
+  };
+  customers: {
+    list: () => Customer[];
+    upsert: (customer: Customer) => Customer;
+    remove: (id: string) => void;
+  };
 };

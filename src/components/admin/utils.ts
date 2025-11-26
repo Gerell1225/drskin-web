@@ -22,7 +22,7 @@ export const serviceSchema = z.object({
   id: z.string(),
   name: z.string().min(2, "Нэр заавал"),
   category: z.string().min(2, "Ангилал"),
-  durationMin: z.coerce.number().int().min(15),
+  durationMin: z.coerce.number().int().min(10, "10-аас дээш минут"),
   kind: z.enum(["skin", "hair"]),
   description: z.string().optional(),
 });

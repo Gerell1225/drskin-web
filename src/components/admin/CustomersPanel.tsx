@@ -9,17 +9,29 @@ import { Toast } from "./ui/Toast";
 
 const PAGE_SIZE = 6;
 
-export function CustomersPanel() {
-  const [items, setItems] = useState(repo.listCustomers());
+type Props = {
+  query: string;
+};
+
+export function CustomersPanel({ query }: Props) {
+  const [items, setItems] = useState(repo.customers.list());
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [toast, setToast] = useState("");
 
-  const totalPages = Math.ceil(items.length / PAGE_SIZE) || 1;
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return items;
+    return items.filter((item) =>
+      [item.name, item.phone, item.tier].some((field) => field.toLowerCase().includes(q)),
+    );
+  }, [items, query]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   const paged = useMemo(
-    () => items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [items, page],
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
   );
 
   const openNew = () => {
@@ -30,15 +42,15 @@ export function CustomersPanel() {
   const onSave = (formData: FormData) => {
     const payload = Object.fromEntries(formData.entries()) as unknown as Customer;
     payload.points = Number(payload.points ?? 0);
-    repo.upsertCustomer(payload);
-    setItems(repo.listCustomers());
+    repo.customers.upsert(payload);
+    setItems(repo.customers.list());
     setToast("Хадгаллаа");
     setModalOpen(false);
   };
 
   const onDelete = (id: string) => {
-    repo.removeCustomer(id);
-    setItems(repo.listCustomers());
+    repo.customers.remove(id);
+    setItems(repo.customers.list());
     setToast("Устгалаа");
   };
 
@@ -47,8 +59,10 @@ export function CustomersPanel() {
     setModalOpen(true);
   };
 
+  const formId = "customer-form";
+
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="card">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Үйлчлүүлэгчид</h2>
@@ -59,8 +73,8 @@ export function CustomersPanel() {
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border bg-white">
-        <table className="min-w-full text-sm">
+      <div className="mt-4 overflow-x-auto rounded-2xl border bg-white">
+        <table className="min-w-[640px] text-sm">
           <thead className="sticky top-0 bg-gray-50 text-left text-xs uppercase text-gray-500">
             <tr>
               <th className="p-3">Нэр</th>
@@ -103,8 +117,17 @@ export function CustomersPanel() {
         <Pagination page={page} total={totalPages} onPage={setPage} />
       </div>
 
-      <Modal open={modalOpen} title="Мэдээлэл" onClose={() => setModalOpen(false)}>
-        <form className="grid gap-3" action={onSave}>
+      <Modal
+        open={modalOpen}
+        title="Мэдээлэл"
+        onClose={() => setModalOpen(false)}
+        actions={
+          <button form={formId} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm">
+            Хадгалах
+          </button>
+        }
+      >
+        <form className="grid gap-3" action={onSave} id={formId}>
           <input type="hidden" name="id" defaultValue={editing?.id} />
           <label className="grid gap-1 text-sm">
             Нэр
@@ -126,7 +149,6 @@ export function CustomersPanel() {
             Оноо
             <input name="points" type="number" defaultValue={editing?.points} className="rounded-lg border p-2" />
           </label>
-          <button className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">Хадгалах</button>
         </form>
       </Modal>
 

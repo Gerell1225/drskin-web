@@ -1,41 +1,55 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { priceSchema } from "./utils";
+import { priceSchema, formatMoney } from "./utils";
 import { repo } from "./repo";
 import { BranchService } from "./types";
 import { Modal } from "./ui/Modal";
 import { Pagination } from "./ui/Pagination";
 import { Toast } from "./ui/Toast";
-import { formatMoney } from "./utils";
 
 const PAGE_SIZE = 8;
 
-export function PricingPanel() {
-  const [prices, setPrices] = useState(repo.listPrices());
-  const [branches] = useState(repo.listBranches());
-  const [services] = useState(repo.listServices());
+type Props = {
+  query: string;
+};
+
+export function PricingPanel({ query }: Props) {
+  const [prices, setPrices] = useState(repo.pricing.list());
+  const [branches] = useState(repo.branches.list());
+  const [services] = useState(repo.services.list());
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<BranchService | null>(null);
   const [toast, setToast] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const totalPages = Math.ceil(prices.length / PAGE_SIZE) || 1;
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return prices;
+    return prices.filter((p) => {
+      const branch = branches.find((b) => b.id === p.branchId)?.title ?? "";
+      const service = services.find((s) => s.id === p.serviceId)?.name ?? "";
+      return branch.toLowerCase().includes(q) || service.toLowerCase().includes(q);
+    });
+  }, [branches, prices, query, services]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
   const paged = useMemo(
-    () => prices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [prices, page],
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
   );
 
   const onSave = (formData: FormData) => {
     const parsed = priceSchema.safeParse(Object.fromEntries(formData.entries()));
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Алдаа гарлаа");
+      const issue = parsed.error.issues[0];
+      setErrors(issue?.path?.[0] ? { [String(issue.path[0])]: issue.message } : { form: issue?.message ?? "Алдаа" });
       return;
     }
-    setError(null);
-    repo.upsertPrice(parsed.data as BranchService);
-    setPrices(repo.listPrices());
+    setErrors({});
+    repo.pricing.upsert(parsed.data as BranchService);
+    setPrices(repo.pricing.list());
     setToast("Хадгаллаа");
     setModalOpen(false);
   };
@@ -51,13 +65,15 @@ export function PricingPanel() {
   };
 
   const onDelete = (branchId: string, serviceId: string) => {
-    repo.removePrice(branchId, serviceId);
-    setPrices(repo.listPrices());
+    repo.pricing.remove(branchId, serviceId);
+    setPrices(repo.pricing.list());
     setToast("Устгалаа");
   };
 
+  const formId = "pricing-form";
+
   return (
-    <section className="rounded-2xl bg-white p-4 shadow-sm">
+    <section className="card">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">Үнийн хүснэгт</h2>
@@ -68,8 +84,8 @@ export function PricingPanel() {
         </button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border bg-white">
-        <table className="min-w-full text-sm">
+      <div className="mt-4 overflow-x-auto rounded-2xl border bg-white">
+        <table className="min-w-[720px] text-sm">
           <thead className="sticky top-0 bg-gray-50 text-left text-xs uppercase text-gray-500">
             <tr>
               <th className="p-3">Салбар</th>
@@ -85,7 +101,7 @@ export function PricingPanel() {
               return (
                 <tr key={`${p.branchId}-${p.serviceId}`} className="border-t">
                   <td className="p-3">{branch}</td>
-                  <td className="max-w-[200px] truncate p-3">{service}</td>
+                  <td className="max-w-[220px] truncate p-3">{service}</td>
                   <td className="p-3 font-medium">{formatMoney(p.price)}</td>
                   <td className="p-3 text-right">
                     <div className="flex justify-end gap-2 text-xs">
@@ -114,9 +130,17 @@ export function PricingPanel() {
         <Pagination page={page} total={totalPages} onPage={setPage} />
       </div>
 
-      <Modal open={modalOpen} title={editing ? "Үнэлгээ" : "Үнэ нэмэх"} onClose={() => setModalOpen(false)}>
-        {error && <p className="rounded-lg bg-red-50 p-2 text-sm text-red-700">{error}</p>}
-        <form className="grid gap-3" action={onSave}>
+      <Modal
+        open={modalOpen}
+        title={editing ? "Үнэлгээ" : "Үнэ нэмэх"}
+        onClose={() => setModalOpen(false)}
+        actions={
+          <button form={formId} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white shadow-sm">
+            Хадгалах
+          </button>
+        }
+      >
+        <form className="grid gap-3" action={onSave} id={formId}>
           <label className="grid gap-1 text-sm">
             Салбар
             <select name="branchId" defaultValue={editing?.branchId} className="rounded-lg border p-2">
@@ -126,6 +150,7 @@ export function PricingPanel() {
                 </option>
               ))}
             </select>
+            {errors.branchId && <p className="text-xs text-red-600">{errors.branchId}</p>}
           </label>
           <label className="grid gap-1 text-sm">
             Үйлчилгээ
@@ -136,12 +161,13 @@ export function PricingPanel() {
                 </option>
               ))}
             </select>
+            {errors.serviceId && <p className="text-xs text-red-600">{errors.serviceId}</p>}
           </label>
           <label className="grid gap-1 text-sm">
             Үнэ (₮)
             <input name="price" type="number" defaultValue={editing?.price} className="rounded-lg border p-2" />
+            {errors.price && <p className="text-xs text-red-600">{errors.price}</p>}
           </label>
-          <button className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white">Хадгалах</button>
         </form>
       </Modal>
       <Toast message={toast} />
