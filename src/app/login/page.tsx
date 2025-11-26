@@ -7,15 +7,15 @@ const loginSchema = z.object({
   password: z.string().min(4, "Нууц үгээ оруулна уу"),
 });
 
-async function login(formData: FormData) {
+async function login(formData: FormData): Promise<void> {
   "use server";
   const parsed = loginSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message };
+    throw new Error(parsed.error.issues[0]?.message);
   }
   const { identifier } = parsed.data;
   const role = identifier.includes("admin") ? "admin" : "customer";
-  cookies().set("role", role, { httpOnly: false, path: "/" });
+  ( await cookies() ).set("role", role, { httpOnly: false, path: "/" });
   if (role === "admin") {
     redirect("/admin");
   }

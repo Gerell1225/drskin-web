@@ -8,13 +8,13 @@ const registerSchema = z.object({
   password: z.string().min(4, "Нууц үгээ оруулна уу"),
 });
 
-async function register(formData: FormData) {
+async function register(formData: FormData): Promise<void> {
   "use server";
   const parsed = registerSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message };
+    throw new Error(parsed.error.issues[0]?.message);
   }
-  cookies().set("role", "customer", { path: "/", httpOnly: false });
+  ( await cookies() ).set("role", "customer", { path: "/", httpOnly: false });
   redirect("/");
 }
 

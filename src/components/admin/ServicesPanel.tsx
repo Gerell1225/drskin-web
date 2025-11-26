@@ -27,7 +27,7 @@ export function ServicesPanel() {
   const onSave = (formData: FormData) => {
     const parsed = serviceSchema.safeParse(Object.fromEntries(formData.entries()));
     if (!parsed.success) {
-      setError(parsed.error.errors[0]?.message ?? "Алдаа гарлаа");
+      setError(parsed.error.issues?.[0]?.message ?? "Алдаа гарлаа");
       return;
     }
     setError(null);

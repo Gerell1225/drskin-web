@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { bookingCapacityOk, bookingSchema, formatMoney, priceLookup } from "./utils";
+import { useState, useMemo } from "react";
 import { repo } from "./repo";
 import { Booking } from "./types";
 import { Modal } from "./ui/Modal";
 import { Toast } from "./ui/Toast";
-import { formatMoney, priceLookup } from "./utils";
+import { bookingSchema, bookingCapacityOk, priceLookup, formatMoney } from "./utils";
+
 
 export function BookingsPanel() {
   const [bookings, setBookings] = useState(repo.listBookings());
@@ -51,7 +51,7 @@ export function BookingsPanel() {
   const onSave = (formData: FormData) => {
     const parsed = bookingSchema.safeParse(Object.fromEntries(formData.entries()));
     if (!parsed.success) {
-      setError(parsed.error.errors[0]?.message ?? "Алдаа гарлаа");
+      setError(parsed.error.issues?.[0]?.message ?? "Алдаа гарлаа");
       return;
     }
     const payload = parsed.data as Booking;
