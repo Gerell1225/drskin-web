@@ -1,0 +1,197 @@
+'use client';
+
+import React from 'react';
+import {
+  Box,
+  Container,
+  Typography,
+  Stack,
+  Card,
+  CardContent,
+  Skeleton,
+} from '@mui/material';
+import { supabase } from '@/lib/supabaseClient';
+
+type ServiceRow = {
+  id: number;
+  name: string;
+  description: string | null;
+  category: string | null;
+  is_active?: boolean | null;
+};
+
+const ServicesSection: React.FC = () => {
+  const [services, setServices] = React.useState<ServiceRow[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchServices = async () => {
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name, description, category, is_active')
+        .order('name', { ascending: true });
+
+      if (error) {
+        console.error('Error loading services:', error);
+        setServices([]);
+      } else {
+        const list = (data ?? []) as ServiceRow[];
+
+        // If you don't have is_active, this filter will just keep all
+        const filtered = list.filter(
+          (s) => s.is_active !== false, // keep null/true as active
+        );
+
+        setServices(filtered);
+      }
+
+      setLoading(false);
+    };
+
+    fetchServices();
+  }, []);
+
+  const isEmpty = !loading && services.length === 0;
+
+  return (
+    <Box
+      id="services"
+      sx={{
+        py: { xs: 6, md: 8 },
+      }}
+    >
+      <Container maxWidth="lg">
+        <Stack spacing={3}>
+          {/* Title */}
+          <Box>
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 700, mb: 1, textAlign: 'left' }}
+            >
+              Үйлчилгээ
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Арьс, үс арчилгааны үндсэн болон дээд зэрэглэлийн багцууд.
+            </Typography>
+          </Box>
+
+          {/* Horizontal scroll list */}
+          <Box
+            sx={{
+              display: 'flex',
+              gap: 2,
+              overflowX: 'auto',
+              pb: 1,
+              '&::-webkit-scrollbar': {
+                height: 6,
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                borderRadius: 999,
+              },
+            }}
+          >
+            {/* Loading skeletons */}
+            {loading &&
+              Array.from({ length: 4 }).map((_, i) => (
+                <Card
+                  key={`skeleton-${i}`}
+                  sx={{
+                    minWidth: 260,
+                    maxWidth: 280,
+                    flex: '0 0 auto',
+                    borderRadius: 4,
+                    boxShadow: 3,
+                  }}
+                >
+                  <CardContent>
+                    <Skeleton variant="text" width="40%" />
+                    <Skeleton variant="text" width="70%" />
+                    <Skeleton variant="text" width="90%" />
+                    <Skeleton
+                      variant="rectangular"
+                      width="100%"
+                      height={40}
+                      sx={{ mt: 2, borderRadius: 2 }}
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+
+            {/* Real data */}
+            {!loading &&
+              services.map((service) => (
+                <Card
+                  key={service.id}
+                  sx={{
+                    minWidth: 260,
+                    maxWidth: 280,
+                    flex: '0 0 auto',
+                    borderRadius: 4,
+                    boxShadow: 3,
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    ':hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    },
+                  }}
+                >
+                  <CardContent>
+                    {service.category && (
+                      <Typography
+                        variant="subtitle2"
+                        color="primary"
+                        sx={{ textTransform: 'uppercase', mb: 1 }}
+                      >
+                        {service.category === 'hair' ? 'Hair' : 'Facial & Skin'}
+                      </Typography>
+                    )}
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                      {service.name}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 2 }}
+                    >
+                      {service.description ||
+                        'Dr.Skin эмч нарын мэргэжлийн үйлчилгээ.'}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Үнэ: салбараас хамаарна
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ))}
+
+            {/* No services case */}
+            {isEmpty && (
+              <Box
+                sx={{
+                  minWidth: 260,
+                  maxWidth: 280,
+                  flex: '0 0 auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 4,
+                  border: '1px dashed',
+                  borderColor: 'grey.300',
+                  p: 3,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Одоогоор үйлчилгээ бүртгэгдээгүй байна.
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Stack>
+      </Container>
+    </Box>
+  );
+};
+
+export default ServicesSection;

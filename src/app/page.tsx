@@ -1,23 +1,19 @@
-import Branches from "@/components/landing/Branches";
-import FAQ from "@/components/landing/FAQ";
-import Footer from "@/components/landing/Footer";
-import Hero from "@/components/landing/Hero";
-import HowTo from "@/components/landing/HowTo";
-import Loyalty from "@/components/landing/Loyalty";
-import Navbar from "@/components/landing/Navbar";
-import Services from "@/components/landing/Services";
+import Header from '@/components/Header';
+import HeroSection from '@/components/HeroSection';
+import ServicesSection from '@/components/ServiceSection';
+import BranchesSection from '@/components/BranchesSection';
+import Footer from '@/components/Footer';
+import OnlineBookingSection from '@/components/OnlineBookingSection';
 
-export default function Page() {
+export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-rose-50 text-gray-900">
-      <Navbar />
-      <Hero />
-      <Services />
-      <Branches />
-      <HowTo />
-      <Loyalty />
-      <FAQ />
+    <main>
+      <Header />
+      <HeroSection />
+      <ServicesSection />
+      <BranchesSection />
+      <OnlineBookingSection />
       <Footer />
-    </div>
+    </main>
   );
 }
