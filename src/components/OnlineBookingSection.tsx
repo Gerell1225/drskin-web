@@ -52,12 +52,17 @@ type SupabaseUser = {
   };
 };
 
-type TimeSlot = {
-  time: string; // "HH:mm"
-  remaining: number; // үлдсэн багтаамж
+type CustomerProfile = {
+  id: string;
+  fullName: string | null;
+  phone: string | null;
 };
 
-// 11:00 – 19:00, 30 минутын алхамтай
+type TimeSlot = {
+  time: string;
+  remaining: number;
+};
+
 const generateTimeSlots = (): string[] => {
   const slots: string[] = [];
   for (let hour = 11; hour <= 19; hour++) {
@@ -74,6 +79,8 @@ const OnlineBookingSection: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
   const [loginOpen, setLoginOpen] = React.useState(false);
   const [authUser, setAuthUser] = React.useState<SupabaseUser | null>(null);
+  const [customerProfile, setCustomerProfile] =
+    React.useState<CustomerProfile | null>(null);
 
   const [branches, setBranches] = React.useState<BranchRef[]>([]);
   const [services, setServices] = React.useState<ServiceRef[]>([]);
@@ -81,12 +88,10 @@ const OnlineBookingSection: React.FC = () => {
   const [loadingInitial, setLoadingInitial] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
 
-  // time slots (for dropdown)
   const [timeSlots, setTimeSlots] = React.useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
   const [slotsError, setSlotsError] = React.useState<string | null>(null);
 
-  // form
   const today = React.useMemo(
     () => new Date().toISOString().slice(0, 10),
     [],
@@ -103,7 +108,7 @@ const OnlineBookingSection: React.FC = () => {
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
   // ─────────────────────────────
-  // AUTH – check & subscribe
+  // AUTH – user + listen changes
   // ─────────────────────────────
   React.useEffect(() => {
     const init = async () => {
@@ -131,6 +136,39 @@ const OnlineBookingSection: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // ─────────────────────────────
+  // Load customer profile from DB
+  // customers.id = authUser.id
+  // ─────────────────────────────
+  React.useEffect(() => {
+    const loadCustomerProfile = async () => {
+      if (!authUser) {
+        setCustomerProfile(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('customers')
+        .select('id, full_name, phone')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error loading customer profile for booking:', error);
+        setCustomerProfile(null);
+        return;
+      }
+
+      setCustomerProfile({
+        id: data.id as string,
+        fullName: data.full_name ?? null,
+        phone: data.phone ?? null,
+      });
+    };
+
+    loadCustomerProfile();
+  }, [authUser]);
 
   // ─────────────────────────────
   // LOAD branches + services
@@ -213,9 +251,6 @@ const OnlineBookingSection: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─────────────────────────────
-  // HELPERS
-  // ─────────────────────────────
   const resetMessages = () => {
     setFormError(null);
     setCapacityError(null);
@@ -237,7 +272,6 @@ const OnlineBookingSection: React.FC = () => {
     return category === 'skin' ? b.capacitySkin ?? 0 : b.capacityHair ?? 0;
   };
 
-  // services allowed for selected branch
   const availableServices = React.useMemo(() => {
     if (!branchId) {
       return services.filter((s) => s.isActive);
@@ -251,7 +285,6 @@ const OnlineBookingSection: React.FC = () => {
     });
   }, [services, branchId]);
 
-  // price for current branch+service
   const selectedPrice = React.useMemo(() => {
     if (!branchId || !serviceId) return null;
     const service = services.find((s) => s.id === serviceId);
@@ -269,7 +302,7 @@ const OnlineBookingSection: React.FC = () => {
   }, [selectedPrice, peopleCount]);
 
   // ─────────────────────────────
-  // TIME SLOTS (11:00–19:00, 30 мин) + filter past slots
+  // LOAD available time slots for selected day/branch/service
   // ─────────────────────────────
   React.useEffect(() => {
     const loadSlots = async () => {
@@ -341,7 +374,6 @@ const OnlineBookingSection: React.FC = () => {
             const [h, m] = slot.time.split(':');
             const slotMinutes =
               parseInt(h || '0', 10) * 60 + parseInt(m || '0', 10);
-            // Зөвхөн ОДОО цагаас ДАРААГИЙН цагуудыг харуулна
             return slotMinutes > nowMinutes;
           }
           return true;
@@ -358,11 +390,10 @@ const OnlineBookingSection: React.FC = () => {
     if (!loadingInitial) {
       loadSlots();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [branchId, serviceId, date, loadingInitial]);
+  }, [branchId, serviceId, date, loadingInitial, services, today]);
 
   // ─────────────────────────────
-  // CAPACITY CHECK (final guard)
+  // CAPACITY CHECK
   // ─────────────────────────────
   const checkCapacity = async (): Promise<boolean> => {
     setCapacityError(null);
@@ -414,7 +445,7 @@ const OnlineBookingSection: React.FC = () => {
 
     if (total > capacity) {
       setCapacityError(
-        `Энэ цагт багтаамж дүүрсэн байна. Одоогийн захиалга: ${currentLoad}/${capacity} хүн. Танай ${people} хүнийг нэмбэл ${total}/${capacity} болно.`,
+        `Энэ цагт багтаамж дүүрсэн байна. Одоогоийн захиалга: ${currentLoad}/${capacity} хүн. Танай ${people} хүнийг нэмбэл ${total}/${capacity} болно.`,
       );
       return false;
     }
@@ -423,7 +454,7 @@ const OnlineBookingSection: React.FC = () => {
   };
 
   // ─────────────────────────────
-  // SUBMIT
+  // SUBMIT BOOKING
   // ─────────────────────────────
   const handleSubmit = async () => {
     resetMessages();
@@ -448,18 +479,30 @@ const OnlineBookingSection: React.FC = () => {
 
     const people = Number(peopleCount) || 1;
 
-    // capacity check
+    // Ensure we have name + phone
+    const dbName = customerProfile?.fullName?.trim();
+    const dbPhone = customerProfile?.phone?.trim();
+
+    const metaName = authUser.user_metadata?.full_name?.trim();
+    const metaPhone = authUser.user_metadata?.phone?.trim();
+    const authPhone = authUser.phone?.trim();
+
+    const fullName =
+      dbName ||
+      metaName ||
+      (authUser.email ? authUser.email.split('@')[0] : 'Онлайн хэрэглэгч');
+
+    const phone = dbPhone || metaPhone || authPhone || '';
+
+    if (!phone) {
+      setFormError(
+        'Таны профайл дээр утасны дугаар бүртгэгдээгүй байна. Салонтой холбогдож мэдээллээ шинэчлэнэ үү.',
+      );
+      return;
+    }
+
     const ok = await checkCapacity();
     if (!ok) return;
-
-    // customer info from auth (талбар харагдахгүй, зөвхөн DB-д)
-    const fullName =
-      authUser.user_metadata?.full_name ||
-      (authUser.email ? authUser.email.split('@')[0] : 'Онлайн хэрэглэгч');
-    const phone =
-      authUser.user_metadata?.phone ||
-      authUser.phone ||
-      'Утасгүй'; // <<--- NOT NULL fallback
 
     const payload = {
       date,
@@ -467,12 +510,12 @@ const OnlineBookingSection: React.FC = () => {
       branch_id: branchId,
       service_id: serviceId,
       customer_name: fullName,
-      customer_phone: phone, // хэзээ ч null биш
+      customer_phone: phone,
       people_count: people,
       channel: 'online',
       status: 'pending',
       total_amount: totalAmount,
-      payment_status: 'pending', // 30 мин дотор төлөгдөх ёстой
+      payment_status: 'pending',
     };
 
     setSubmitting(true);
@@ -496,7 +539,6 @@ const OnlineBookingSection: React.FC = () => {
         'Таны онлайн захиалга амжилттай бүртгэгдлээ. 30 минутын дотор QPay-ээр төлбөр хийгдээгүй тохиолдолд захиалга автоматаар цуцлагдана.',
       );
 
-      // people & time-ийг reset, салбар/үйлчилгээг үлдээнэ
       setPeopleCount('1');
       setTime(null);
     } finally {
@@ -505,7 +547,7 @@ const OnlineBookingSection: React.FC = () => {
   };
 
   // ─────────────────────────────
-  // LOGIN DIALOG HANDLERS
+  // LOGIN DIALOG
   // ─────────────────────────────
   const handleOpenLogin = () => setLoginOpen(true);
   const handleCloseLogin = () => setLoginOpen(false);
@@ -539,7 +581,7 @@ const OnlineBookingSection: React.FC = () => {
           spacing={4}
           alignItems={{ xs: 'stretch', md: 'flex-start' }}
         >
-          {/* Left: Title + description */}
+          {/* Left text */}
           <Box sx={{ flex: 1 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
               Онлайн цаг авах
@@ -565,7 +607,7 @@ const OnlineBookingSection: React.FC = () => {
             </Stack>
           </Box>
 
-          {/* Right: Booking card */}
+          {/* Right card */}
           <Box sx={{ flex: 1, maxWidth: 480, width: '100%' }}>
             <Card
               sx={{
@@ -646,16 +688,28 @@ const OnlineBookingSection: React.FC = () => {
                             setTime(null);
                           }}
                         >
-                          {availableServices.map((s) => (
-                            <MenuItem key={s.id} value={s.id}>
-                              {s.name}
-                            </MenuItem>
-                          ))}
+                          {availableServices.map((s) => {
+                            // Show price in label if available for this branch
+                            const bp = s.branchPrices.find(
+                              (p) => p.branchId === branchId && p.enabled,
+                            );
+                            const label =
+                              bp && bp.price
+                                ? `${s.name} (${bp.price.toLocaleString(
+                                    'en-US',
+                                  )} ₮)`
+                                : s.name;
+                            return (
+                              <MenuItem key={s.id} value={s.id}>
+                                {label}
+                              </MenuItem>
+                            );
+                          })}
                         </Select>
                       </FormControl>
                     </Stack>
 
-                    {/* Date + Time (dropdown) */}
+                    {/* Date + Time */}
                     <Stack
                       direction={{ xs: 'column', sm: 'row' }}
                       spacing={2}
@@ -799,7 +853,6 @@ const OnlineBookingSection: React.FC = () => {
                 )}
               </CardContent>
 
-              {/* Blur overlay when NOT logged in */}
               {!isLoggedIn && !loadingInitial && branches.length > 0 && (
                 <Box
                   sx={{

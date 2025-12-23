@@ -98,7 +98,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      // 1) Auth user (for id + email)
+      // 1) Auth user
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
 
@@ -111,9 +111,13 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
-      const authUser = userData.user;
+      const authUser = userData.user as any;
       const authUserId = authUser.id;
-      const authEmail = authUser.email ?? null;
+      const authEmail: string | null = authUser.email ?? null;
+      const authPhoneRaw: string | null =
+        authUser.phone ??
+        authUser.user_metadata?.phone ??
+        null;
 
       // 2) Customer profile – customers.id = auth user id
       const { data: customerRow, error: customerError } = await supabase
@@ -131,37 +135,67 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
+      let customerPhone: string | null = customerRow.phone ?? null;
+
+      // 2.1 If customers.phone is empty but auth has a phone,
+      // sync it into customers table once so future logic is consistent.
+      if (!customerPhone && authPhoneRaw) {
+        const { error: updateError } = await supabase
+          .from('customers')
+          .update({ phone: authPhoneRaw })
+          .eq('id', authUserId);
+
+        if (updateError) {
+          console.error('Customer phone sync error:', updateError);
+        } else {
+          customerPhone = authPhoneRaw;
+        }
+      }
+
       const profileData: ProfileData = {
         id: customerRow.id as string,
         fullName: customerRow.full_name ?? '',
         email: authEmail,
-        phone: customerRow.phone ?? null,
+        phone: customerPhone,
         loyaltyPoints: customerRow.loyalty_points ?? 0,
       };
 
       setProfile(profileData);
 
-      // 3) Last 10 bookings linked by PHONE (because bookings.customer_id column does not exist)
-      let bookingsData: any[] | null = [];
-      let bookingsError: any = null;
+      // 3) All bookings linked by PHONE (can include multiple phone candidates)
+      const phoneCandidates: string[] = [];
 
-      if (customerRow.phone) {
-        const res = await supabase
-          .from('bookings')
-          .select(
-            'id, date, time, status, channel, branch_id, service_id, customer_phone',
-          )
-          .eq('customer_phone', customerRow.phone)
-          .order('date', { ascending: false })
-          .order('time', { ascending: false })
-          .limit(10);
-
-        bookingsData = res.data;
-        bookingsError = res.error;
-      } else {
-        // no phone on profile -> nothing to match
-        bookingsData = [];
+      if (customerPhone) {
+        phoneCandidates.push(customerPhone);
       }
+      if (authPhoneRaw && !phoneCandidates.includes(authPhoneRaw)) {
+        phoneCandidates.push(authPhoneRaw);
+      }
+
+      if (phoneCandidates.length === 0) {
+        // No phone numbers to match -> no history
+        setHistory([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(
+          `
+          id,
+          date,
+          time,
+          status,
+          channel,
+          customer_phone,
+          branches ( name ),
+          services ( name )
+        `,
+        )
+        .in('customer_phone', phoneCandidates)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
 
       if (bookingsError) {
         console.error('Booking history error:', bookingsError);
@@ -171,69 +205,12 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
-      const bookings = bookingsData ?? [];
+      const bookings = (bookingsData ?? []) as any[];
 
       if (bookings.length === 0) {
         setHistory([]);
         setLoading(false);
         return;
-      }
-
-      // 4) Fetch branch + service names separately
-      const branchIds = Array.from(
-        new Set(
-          bookings
-            .map((b: any) => b.branch_id)
-            .filter((id: any) => id != null),
-        ),
-      );
-      const serviceIds = Array.from(
-        new Set(
-          bookings
-            .map((b: any) => b.service_id)
-            .filter((id: any) => id != null),
-        ),
-      );
-
-      let branchMap: Record<number, string> = {};
-      let serviceMap: Record<number, string> = {};
-
-      if (branchIds.length > 0) {
-        const { data: branchRows, error: branchError } = await supabase
-          .from('branches')
-          .select('id, name')
-          .in('id', branchIds);
-
-        if (branchError) {
-          console.error('Branches fetch error:', branchError);
-        } else {
-          branchMap = (branchRows ?? []).reduce(
-            (acc: Record<number, string>, row: any) => {
-              acc[row.id] = row.name ?? '';
-              return acc;
-            },
-            {},
-          );
-        }
-      }
-
-      if (serviceIds.length > 0) {
-        const { data: serviceRows, error: serviceError } = await supabase
-          .from('services')
-          .select('id, name')
-          .in('id', serviceIds);
-
-        if (serviceError) {
-          console.error('Services fetch error:', serviceError);
-        } else {
-          serviceMap = (serviceRows ?? []).reduce(
-            (acc: Record<number, string>, row: any) => {
-              acc[row.id] = row.name ?? '';
-              return acc;
-            },
-            {},
-          );
-        }
       }
 
       const mappedHistory: BookingHistoryItem[] = bookings.map((b: any) => ({
@@ -242,8 +219,8 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         time: b.time ?? null,
         status: b.status,
         channel: b.channel ?? null,
-        branchName: branchMap[b.branch_id] || '',
-        serviceName: serviceMap[b.service_id] || '',
+        branchName: b.branches?.name ?? '',
+        serviceName: b.services?.name ?? '',
       }));
 
       setHistory(mappedHistory);
@@ -303,12 +280,18 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         sx: {
           width: { xs: '100%', sm: 380 },
           borderRadius: { xs: 0, sm: '16px 0 0 16px' },
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
       {/* Header */}
       <Box sx={{ p: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Миний профайл
           </Typography>
@@ -379,7 +362,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             </Typography>
           )}
 
-          {!loading && history.length === 0 && (
+          {!loading && history.length === 0 && !errorMsg && (
             <Typography variant="body2" color="text.secondary">
               Одоогоор захиалга байхгүй байна.
             </Typography>
@@ -405,7 +388,10 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                             {b.date}{' '}
                             {b.time ? b.time.toString().slice(0, 5) : ''}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                          >
                             {b.branchName || 'Салбар'} •{' '}
                             {b.serviceName || 'Үйлчилгээ'}
                           </Typography>
@@ -438,7 +424,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
       <Divider />
 
-      {/* Change password */}
       <Box sx={{ p: 2 }}>
         <Stack direction="row" alignItems="center" spacing={1} mb={1}>
           <LockResetIcon fontSize="small" color="action" />
@@ -491,7 +476,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
       <Divider />
 
-      {/* Logout */}
       <Box sx={{ p: 2 }}>
         <Button
           fullWidth
