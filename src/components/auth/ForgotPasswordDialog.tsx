@@ -8,8 +8,9 @@ import {
   DialogActions,
   TextField,
   Button,
-  Stack,
   Typography,
+  Stack,
+  Alert,
 } from '@mui/material';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -23,59 +24,52 @@ const ForgotPasswordDialog: React.FC<ForgotPasswordDialogProps> = ({
   onClose,
 }) => {
   const [email, setEmail] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
+  const [sending, setSending] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
-  const resetMessages = () => {
+  const handleSend = async () => {
     setErrorMsg(null);
     setSuccessMsg(null);
-  };
-
-  const handleSendReset = async () => {
-    resetMessages();
 
     if (!email.trim()) {
-      setErrorMsg('Имэйл хаягаа оруулна уу.');
+      setErrorMsg('И-мэйл хаягаа оруулна уу.');
       return;
     }
 
-    setLoading(true);
+    setSending(true);
     try {
-      const origin =
-        process.env.NEXT_PUBLIC_SITE_URL ??
-        (typeof window !== 'undefined'
-          ? window.location.origin
-          : 'http://localhost:3000');
-
-      const redirectTo = `${origin}/auth/update-password`;
+      const siteUrl = (
+        process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+      ).replace(/\/$/, '');
 
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.trim(),
         {
-          redirectTo,
+          redirectTo: `${siteUrl}/auth/callback?next=/password`,
         },
       );
 
       if (error) {
         console.error('resetPasswordForEmail error:', error);
         setErrorMsg(
-          'Нууц үг сэргээх имэйл илгээхэд алдаа гарлаа. Та дахин оролдоно уу.',
+          error.message || 'И-мэйл илгээхэд алдаа гарлаа. Дахин оролдоно уу.',
         );
         return;
       }
 
       setSuccessMsg(
-        'Нууц үг сэргээх линк таны имэйл рүү амжилттай илгээгдлээ. Хэдхэн минутын дотор шалгана уу.',
+        'Нууц үг сэргээх заавар таны и-мэйл хаяг руу илгээгдлээ. Inbox болон Spam хавтасыг шалгана уу.',
       );
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
   const handleClose = () => {
     setEmail('');
-    resetMessages();
+    setErrorMsg(null);
+    setSuccessMsg(null);
     onClose();
   };
 
@@ -85,49 +79,39 @@ const ForgotPasswordDialog: React.FC<ForgotPasswordDialogProps> = ({
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Та Dr.Skin аккаунтад бүртгэлтэй имэйл хаягаа оруулна уу. Бид нууц үг
-            сэргээх линкийг таны имэйл рүү илгээнэ.
+            Dr.Skin аккаунтын и-мэйл хаягаа оруулснаар нууц үг сэргээх холбоос
+            очих болно.
           </Typography>
 
           <TextField
-            label="Имэйл хаяг"
+            label="И-мэйл хаяг"
             type="email"
             size="small"
             fullWidth
             value={email}
-            onChange={(e) => {
-              resetMessages();
-              setEmail(e.target.value);
-            }}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
-          {errorMsg && (
-            <Typography variant="caption" color="error">
-              {errorMsg}
-            </Typography>
-          )}
-          {successMsg && (
-            <Typography variant="caption" sx={{ color: 'success.main' }}>
-              {successMsg}
-            </Typography>
-          )}
+          {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
+          {successMsg && <Alert severity="success">{successMsg}</Alert>}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions sx={{ p: 2.5, pt: 1 }}>
         <Button
           onClick={handleClose}
-          disabled={loading}
           sx={{ textTransform: 'none' }}
+          disabled={sending}
         >
           Болих
         </Button>
         <Button
           variant="contained"
-          onClick={handleSendReset}
-          disabled={loading}
-          sx={{ textTransform: 'none' }}
+          color="primary"
+          onClick={handleSend}
+          disabled={sending}
+          sx={{ textTransform: 'none', borderRadius: 999 }}
         >
-          {loading ? 'Илгээж байна…' : 'Линк илгээх'}
+          {sending ? 'Илгээж байна…' : 'И-мэйл илгээх'}
         </Button>
       </DialogActions>
     </Dialog>
