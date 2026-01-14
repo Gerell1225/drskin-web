@@ -45,7 +45,7 @@ type ServiceRef = {
   name: string;
   category: 'skin' | 'hair';
   isActive: boolean;
-  enabledBranchIds: number[]; 
+  enabledBranchIds: number[];
 };
 
 type Booking = {
@@ -86,17 +86,15 @@ const BookingsSection: React.FC = () => {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  const today = React.useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    [],
-  );
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
-  const [branchFilter, setBranchFilter] =
-    React.useState<number | 'all'>('all');
-  const [channelFilter, setChannelFilter] =
-    React.useState<BookingChannel | 'all'>('all');
-  const [statusFilter, setStatusFilter] =
-    React.useState<BookingStatus | 'all'>('all');
+  const [branchFilter, setBranchFilter] = React.useState<number | 'all'>('all');
+  const [channelFilter, setChannelFilter] = React.useState<
+    BookingChannel | 'all'
+  >('all');
+  const [statusFilter, setStatusFilter] = React.useState<BookingStatus | 'all'>(
+    'all',
+  );
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [mode, setMode] = React.useState<'create' | 'edit'>('create');
@@ -109,13 +107,10 @@ const BookingsSection: React.FC = () => {
   const [formCustomerName, setFormCustomerName] = React.useState('');
   const [formCustomerPhone, setFormCustomerPhone] = React.useState('');
   const [formPeopleCount, setFormPeopleCount] = React.useState('1');
-  const [formStatus, setFormStatus] =
-    React.useState<BookingStatus>('pending');
+  const [formStatus, setFormStatus] = React.useState<BookingStatus>('pending');
 
   const [saving, setSaving] = React.useState(false);
-  const [capacityError, setCapacityError] = React.useState<string | null>(
-    null,
-  );
+  const [capacityError, setCapacityError] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -240,7 +235,7 @@ const BookingsSection: React.FC = () => {
   ): number => {
     const b = branches.find((br) => br.id === branchId);
     if (!b) return 0;
-    return category === 'skin' ? b.capacitySkin ?? 0 : b.capacityHair ?? 0;
+    return category === 'skin' ? (b.capacitySkin ?? 0) : (b.capacityHair ?? 0);
   };
 
   const availableServices = React.useMemo(() => {
@@ -314,9 +309,7 @@ const BookingsSection: React.FC = () => {
     setFormDate(selectedDate || today);
     setFormTime('10:00');
     setFormBranchId(defaultBranchId);
-    setFormServiceId(
-      servicesForBranch[0]?.id ?? services[0]?.id ?? null,
-    );
+    setFormServiceId(servicesForBranch[0]?.id ?? services[0]?.id ?? null);
     setFormCustomerName('');
     setFormCustomerPhone('');
     setFormPeopleCount('1');
@@ -392,7 +385,12 @@ const BookingsSection: React.FC = () => {
   const handleSave = async () => {
     resetFormErrors();
 
-    if (!formDate || !formTime || formBranchId == null || formServiceId == null) {
+    if (
+      !formDate ||
+      !formTime ||
+      formBranchId == null ||
+      formServiceId == null
+    ) {
       setFormError('Огноо, цаг, салбар, үйлчилгээг заавал бөглөнө үү.');
       return;
     }
@@ -552,9 +550,7 @@ const BookingsSection: React.FC = () => {
                 value={branchFilter}
                 onChange={(e) =>
                   setBranchFilter(
-                    e.target.value === 'all'
-                      ? 'all'
-                      : Number(e.target.value),
+                    e.target.value === 'all' ? 'all' : Number(e.target.value),
                   )
                 }
               >
@@ -651,9 +647,7 @@ const BookingsSection: React.FC = () => {
             Онлайн орлого
           </Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, mt: 1 }}>
-            {loading
-              ? '…'
-              : `${onlinePaidRevenue.toLocaleString('en-US')} ₮`}
+            {loading ? '…' : `${onlinePaidRevenue.toLocaleString('en-US')} ₮`}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Зөвхөн онлайн төлбөр төлсөн захиалга.
@@ -724,9 +718,7 @@ const BookingsSection: React.FC = () => {
                       {booking.customerPhone}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
-                    {booking.peopleCount}
-                  </TableCell>
+                  <TableCell align="right">{booking.peopleCount}</TableCell>
                   <TableCell>
                     <Chip
                       size="small"
@@ -782,10 +774,7 @@ const BookingsSection: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={() => openEdit(booking)}
-                    >
+                    <IconButton size="small" onClick={() => openEdit(booking)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -856,9 +845,7 @@ const BookingsSection: React.FC = () => {
                   value={formBranchId ?? ''}
                   onChange={(e) => {
                     const val =
-                      e.target.value === ''
-                        ? null
-                        : Number(e.target.value);
+                      e.target.value === '' ? null : Number(e.target.value);
                     setFormBranchId(val);
                     resetFormErrors();
                   }}
@@ -879,9 +866,7 @@ const BookingsSection: React.FC = () => {
                   value={formServiceId ?? ''}
                   onChange={(e) => {
                     const val =
-                      e.target.value === ''
-                        ? null
-                        : Number(e.target.value);
+                      e.target.value === '' ? null : Number(e.target.value);
                     setFormServiceId(val);
                     resetFormErrors();
                   }}

@@ -27,7 +27,7 @@ const adminNavItems = [
   { id: 'branches', label: 'Салбарууд' },
   { id: 'services', label: 'Үйлчилгээ' },
   { id: 'bookings', label: 'Захиалга' },
-  { id: 'customers', label: 'Хэрэглэгчид' }
+  { id: 'customers', label: 'Хэрэглэгчид' },
 ];
 
 type BranchRefForServices = {

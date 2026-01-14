@@ -61,8 +61,7 @@ const DashboardSection: React.FC = () => {
   const [customersCount, setCustomersCount] = React.useState<number>(0);
 
   const [selectedDate, setSelectedDate] = React.useState<string>(todayStr);
-  const [branchFilter, setBranchFilter] =
-    React.useState<number | 'all'>('all');
+  const [branchFilter, setBranchFilter] = React.useState<number | 'all'>('all');
 
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
@@ -217,10 +216,7 @@ const DashboardSection: React.FC = () => {
   }, [bookings, services]);
 
   const branchLoadsForDate = React.useMemo(() => {
-    const map = new Map<
-      number,
-      { people: number; bookings: number }
-    >();
+    const map = new Map<number, { people: number; bookings: number }>();
 
     filteredForDate.forEach((b) => {
       if (b.status === 'cancelled') return;
@@ -251,8 +247,8 @@ const DashboardSection: React.FC = () => {
           Хянах самбар
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Өнөөдрийн захиалга, онлайн орлого, салбарын ачаалал болон хамгийн
-          их захиалагдсан үйлчилгээнүүдийг нэг дороос харна.
+          Өнөөдрийн захиалга, онлайн орлого, салбарын ачаалал болон хамгийн их
+          захиалагдсан үйлчилгээнүүдийг нэг дороос харна.
         </Typography>
       </Stack>
 
@@ -286,9 +282,7 @@ const DashboardSection: React.FC = () => {
               value={branchFilter}
               onChange={(e) =>
                 setBranchFilter(
-                  e.target.value === 'all'
-                    ? 'all'
-                    : Number(e.target.value),
+                  e.target.value === 'all' ? 'all' : Number(e.target.value),
                 )
               }
             >
@@ -319,11 +313,7 @@ const DashboardSection: React.FC = () => {
         )}
       </Paper>
 
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
-        mb={3}
-      >
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
         <Paper
           sx={{
             flex: 1,
@@ -340,10 +330,7 @@ const DashboardSection: React.FC = () => {
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Утас: {phoneBookingsCount} • Онлайн:{' '}
-            {
-              filteredForDate.filter((b) => b.channel === 'online')
-                .length
-            }
+            {filteredForDate.filter((b) => b.channel === 'online').length}
           </Typography>
         </Paper>
 
@@ -359,9 +346,7 @@ const DashboardSection: React.FC = () => {
             Онлайн орлого ({selectedDate})
           </Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, mt: 1 }}>
-            {loading
-              ? '…'
-              : `${totalOnlinePaid.toLocaleString('en-US')} ₮`}
+            {loading ? '…' : `${totalOnlinePaid.toLocaleString('en-US')} ₮`}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Зөвхөн онлайн (QPay) төлбөрөө бүрэн төлсөн захиалгууд.
@@ -408,10 +393,7 @@ const DashboardSection: React.FC = () => {
         </Paper>
       </Stack>
 
-      <Stack
-        direction={{ xs: 'column', lg: 'row' }}
-        spacing={2}
-      >
+      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2}>
         <Paper
           sx={{
             flex: 1,
@@ -430,10 +412,7 @@ const DashboardSection: React.FC = () => {
           <Divider sx={{ my: 1.5 }} />
 
           {topServices.length === 0 && !loading && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
+            <Typography variant="body2" color="text.secondary">
               Одоогоор хангалттай захиалга байхгүй байна.
             </Typography>
           )}
@@ -472,10 +451,7 @@ const DashboardSection: React.FC = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {item.name}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                    >
+                    <Typography variant="caption" color="text.secondary">
                       {item.count} захиалга • {percent}%
                     </Typography>
                     <LinearProgress
@@ -509,10 +485,7 @@ const DashboardSection: React.FC = () => {
           <Divider sx={{ my: 1.5 }} />
 
           {branchLoadsForDate.length === 0 && !loading && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-            >
+            <Typography variant="body2" color="text.secondary">
               Энэ өдөр захиалга бүртгэгдээгүй байна.
             </Typography>
           )}
@@ -533,10 +506,7 @@ const DashboardSection: React.FC = () => {
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {b.branchName}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                    >
+                    <Typography variant="caption" color="text.secondary">
                       {b.bookings} захиалга • {b.people} хүн
                     </Typography>
                   </Box>

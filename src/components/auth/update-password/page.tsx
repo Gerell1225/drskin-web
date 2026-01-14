@@ -59,7 +59,9 @@ const UpdatePasswordPage: React.FC = () => {
 
       if (error) {
         console.error('updateUser (password) error:', error);
-        setErrorMsg('Нууц үг солиход алдаа гарлаа. Холбоосын хугацаа дууссан байж магадгүй.');
+        setErrorMsg(
+          'Нууц үг солиход алдаа гарлаа. Холбоосын хугацаа дууссан байж магадгүй.',
+        );
         return;
       }
 

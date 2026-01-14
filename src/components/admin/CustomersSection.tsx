@@ -46,8 +46,9 @@ const CustomersSection: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
 
   const [search, setSearch] = React.useState('');
-  const [statusFilter, setStatusFilter] =
-    React.useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = React.useState<
+    'all' | 'active' | 'inactive'
+  >('all');
 
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
@@ -201,8 +202,8 @@ const CustomersSection: React.FC = () => {
           Хэрэглэгчид / Loyalty Оноо
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Хэрэглэгчийн мэдээлэл, оноо болон үйлчлэлийн статистикийг эндээс
-          хянаж удирдана. Хэрэглэгчид өөрсдөө бүртгэл үүсгэнэ.
+          Хэрэглэгчийн мэдээлэл, оноо болон үйлчлэлийн статистикийг эндээс хянаж
+          удирдана. Хэрэглэгчид өөрсдөө бүртгэл үүсгэнэ.
         </Typography>
       </Stack>
 
@@ -212,11 +213,7 @@ const CustomersSection: React.FC = () => {
         mb={2}
         alignItems={{ xs: 'stretch', md: 'center' }}
       >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          flex={1}
-        >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flex={1}>
           <Paper
             sx={{
               flex: 1,
@@ -347,9 +344,7 @@ const CustomersSection: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {c.phone || '-'}
-                    </Typography>
+                    <Typography variant="body2">{c.phone || '-'}</Typography>
                   </TableCell>
                   <TableCell align="right">
                     {c.totalPoints.toLocaleString('en-US')} оноо

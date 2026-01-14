@@ -238,7 +238,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
     setDeletingId(branch.id);
 
     try {
-
       const { error } = await supabase
         .from('branches')
         .delete()
@@ -327,16 +326,8 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
               alignItems={{ xs: 'flex-start', sm: 'center' }}
             >
               <Box sx={{ flex: 1 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  mb={0.5}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 600 }}
-                  >
+                <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {branch.name}
                   </Typography>
                   <Chip
@@ -355,10 +346,7 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
                   {branch.location || 'Байршлын мэдээлэл оруулаагүй.'}
                 </Typography>
 
-                <Typography
-                  variant="body2"
-                  sx={{ mb: 0.5 }}
-                >
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
                   Утас: {branch.phone || '—'}
                 </Typography>
 
@@ -449,10 +437,7 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
               onChange={(e) => setFormPhone(e.target.value)}
             />
 
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-            >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
                 label="Арьсны ор (skin beds)"
                 type="number"
@@ -483,9 +468,7 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
               control={
                 <Switch
                   checked={formIsActive}
-                  onChange={(e) =>
-                    setFormIsActive(e.target.checked)
-                  }
+                  onChange={(e) => setFormIsActive(e.target.checked)}
                   color="primary"
                 />
               }

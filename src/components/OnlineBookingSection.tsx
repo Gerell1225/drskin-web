@@ -92,10 +92,7 @@ const OnlineBookingSection: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = React.useState(false);
   const [slotsError, setSlotsError] = React.useState<string | null>(null);
 
-  const today = React.useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    [],
-  );
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const [date, setDate] = React.useState(today);
   const [time, setTime] = React.useState<string | null>(null);
@@ -269,7 +266,7 @@ const OnlineBookingSection: React.FC = () => {
   ) => {
     const b = branches.find((br) => br.id === bid);
     if (!b) return 0;
-    return category === 'skin' ? b.capacitySkin ?? 0 : b.capacityHair ?? 0;
+    return category === 'skin' ? (b.capacitySkin ?? 0) : (b.capacityHair ?? 0);
   };
 
   const availableServices = React.useMemo(() => {
@@ -350,8 +347,7 @@ const OnlineBookingSection: React.FC = () => {
         const t = row.time ? String(row.time).slice(0, 5) : '';
         if (!t) return;
 
-        const people =
-          row.people_count != null ? Number(row.people_count) : 1;
+        const people = row.people_count != null ? Number(row.people_count) : 1;
         counts[t] = (counts[t] || 0) + people;
       });
 
@@ -599,10 +595,9 @@ const OnlineBookingSection: React.FC = () => {
                 sx={{ maxWidth: 'fit-content' }}
               />
               <Typography variant="caption" color="text.secondary">
-                Захиалга эхлээд{' '}
-                <strong>&quot;Төлбөр хүлээгдэж&quot;</strong> төлөвтэй үүснэ. 30
-                минутын дотор QPay-ээр төлбөр хийгдээгүй тохиолдолд захиалга
-                автоматаар цуцлагдана.
+                Захиалга эхлээд <strong>&quot;Төлбөр хүлээгдэж&quot;</strong>{' '}
+                төлөвтэй үүснэ. 30 минутын дотор QPay-ээр төлбөр хийгдээгүй
+                тохиолдолд захиалга автоматаар цуцлагдана.
               </Typography>
             </Stack>
           </Box>
@@ -618,10 +613,7 @@ const OnlineBookingSection: React.FC = () => {
               }}
             >
               <CardContent sx={{ p: 3 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ fontWeight: 600, mb: 2 }}
-                >
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
                   Онлайн захиалгын мэдээлэл
                 </Typography>
 
@@ -640,14 +632,9 @@ const OnlineBookingSection: React.FC = () => {
                 {!loadingInitial && branches.length > 0 && (
                   <Stack spacing={2}>
                     {/* Branch + Service */}
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={2}
-                    >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                       <FormControl fullWidth size="small">
-                        <InputLabel id="branch-select-label">
-                          Салбар
-                        </InputLabel>
+                        <InputLabel id="branch-select-label">Салбар</InputLabel>
                         <Select
                           labelId="branch-select-label"
                           label="Салбар"
@@ -710,10 +697,7 @@ const OnlineBookingSection: React.FC = () => {
                     </Stack>
 
                     {/* Date + Time */}
-                    <Stack
-                      direction={{ xs: 'column', sm: 'row' }}
-                      spacing={2}
-                    >
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                       <TextField
                         label="Өдөр"
                         type="date"
@@ -809,10 +793,7 @@ const OnlineBookingSection: React.FC = () => {
                             : ''}
                         </Typography>
                       ) : (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                        >
+                        <Typography variant="body2" color="text.secondary">
                           Сонгосон салбар дээр энэ үйлчилгээ онлайнаар авах
                           боломжгүй байна.
                         </Typography>
@@ -822,9 +803,7 @@ const OnlineBookingSection: React.FC = () => {
                     {capacityError && (
                       <Alert severity="warning">{capacityError}</Alert>
                     )}
-                    {formError && (
-                      <Alert severity="error">{formError}</Alert>
-                    )}
+                    {formError && <Alert severity="error">{formError}</Alert>}
                     {successMsg && (
                       <Alert severity="success">{successMsg}</Alert>
                     )}
@@ -840,9 +819,7 @@ const OnlineBookingSection: React.FC = () => {
                       }}
                       onClick={handleSubmit}
                       disabled={
-                        submitting ||
-                        loadingInitial ||
-                        branches.length === 0
+                        submitting || loadingInitial || branches.length === 0
                       }
                     >
                       {submitting
