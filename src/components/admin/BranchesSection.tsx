@@ -44,12 +44,10 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
-  // dialog state
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [mode, setMode] = React.useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = React.useState<number | null>(null);
 
-  // form fields
   const [formName, setFormName] = React.useState('');
   const [formLocation, setFormLocation] = React.useState('');
   const [formPhone, setFormPhone] = React.useState('');
@@ -59,7 +57,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
   const [formIsActive, setFormIsActive] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // ── Load branches from Supabase on mount ──
   React.useEffect(() => {
     const fetchBranches = async () => {
       setLoading(true);
@@ -104,7 +101,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
     fetchBranches();
   }, []);
 
-  // ── Dialog helpers ──
   const resetForm = () => {
     setFormName('');
     setFormLocation('');
@@ -142,7 +138,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
     setDialogOpen(false);
   };
 
-  // ── Save (create / update) ──
   const handleSave = async () => {
     setErrorMsg(null);
 
@@ -234,7 +229,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
     }
   };
 
-  // ── Delete branch (with confirm) ──
   const handleDelete = async (branch: Branch) => {
     const ok = window.confirm(
       `"${branch.name}" салбарыг устгах уу?\nХэрэв энэ салбартай холбогдсон захиалга, үйлчилгээний үнэ байвал алдаа гарч магадгүй.`,
@@ -244,10 +238,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
     setDeletingId(branch.id);
 
     try {
-      // If you also want to clean up related rows (optional):
-      // await supabase.from('service_branch_prices').delete().eq('branch_id', branch.id);
-      // await supabase.from('bookings').delete().eq('branch_id', branch.id);
-      // ↑ Only do this if you REALLY want to delete those too.
 
       const { error } = await supabase
         .from('branches')
@@ -270,7 +260,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
 
   return (
     <Box>
-      {/* Title */}
       <Stack spacing={1} mb={3}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Салбарууд
@@ -281,7 +270,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
         </Typography>
       </Stack>
 
-      {/* Top bar */}
       <Paper
         sx={{
           p: 2,
@@ -309,7 +297,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
         </Button>
       </Paper>
 
-      {/* Branch cards */}
       <Stack spacing={2}>
         {loading && branches.length === 0 && (
           <Typography variant="body2" color="text.secondary">
@@ -339,7 +326,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
               justifyContent="space-between"
               alignItems={{ xs: 'flex-start', sm: 'center' }}
             >
-              {/* Left info */}
               <Box sx={{ flex: 1 }}>
                 <Stack
                   direction="row"
@@ -403,7 +389,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
                 )}
               </Box>
 
-              {/* Actions: edit + delete */}
               <Stack direction="row" spacing={0.5}>
                 <IconButton
                   size="small"
@@ -427,7 +412,6 @@ const BranchesSection: React.FC<Props> = ({ initialBranches = [] }) => {
         ))}
       </Stack>
 
-      {/* CREATE / EDIT dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}

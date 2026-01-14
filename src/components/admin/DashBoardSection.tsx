@@ -60,23 +60,17 @@ const DashboardSection: React.FC = () => {
   const [bookings, setBookings] = React.useState<BookingRow[]>([]);
   const [customersCount, setCustomersCount] = React.useState<number>(0);
 
-  // Filters
   const [selectedDate, setSelectedDate] = React.useState<string>(todayStr);
   const [branchFilter, setBranchFilter] =
     React.useState<number | 'all'>('all');
 
-  // Errors (optional, we just log to console but keep component working)
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // ─────────────────────────────
-  // LOAD DATA FROM SUPABASE
-  // ─────────────────────────────
   React.useEffect(() => {
     const loadDashboardData = async () => {
       setLoading(true);
       setErrorMsg(null);
 
-      // last 30 days for bookings (enough for "top services" etc.)
       const fromDate = new Date();
       fromDate.setDate(fromDate.getDate() - 30);
       const fromStr = fromDate.toISOString().slice(0, 10);
@@ -167,16 +161,12 @@ const DashboardSection: React.FC = () => {
     loadDashboardData();
   }, []);
 
-  // ─────────────────────────────
-  // HELPERS
-  // ─────────────────────────────
   const getBranchName = (id: number) =>
     branches.find((b) => b.id === id)?.name || `#${id}`;
 
   const getServiceName = (id: number) =>
     services.find((s) => s.id === id)?.name || `#${id}`;
 
-  // bookings for selected date & optional branch
   const filteredForDate = React.useMemo(() => {
     return bookings.filter((b) => {
       if (b.date !== selectedDate) return false;
@@ -185,7 +175,6 @@ const DashboardSection: React.FC = () => {
     });
   }, [bookings, selectedDate, branchFilter]);
 
-  // ── Key metrics for selected date ──────────────────────────
   const totalBookings = filteredForDate.length;
 
   const totalOnlinePaid = filteredForDate
@@ -205,14 +194,12 @@ const DashboardSection: React.FC = () => {
     (b) => b.channel === 'phone',
   ).length;
 
-  // ── Top services (last 30 days, all branches) ───────────────
   const topServices = React.useMemo(() => {
     if (bookings.length === 0 || services.length === 0) return [];
 
     const counts = new Map<number, number>();
 
     bookings.forEach((b) => {
-      // ignore cancelled
       if (b.status === 'cancelled') return;
       counts.set(b.serviceId, (counts.get(b.serviceId) ?? 0) + 1);
     });
@@ -229,7 +216,6 @@ const DashboardSection: React.FC = () => {
     return items;
   }, [bookings, services]);
 
-  // ── Branch load for selected date (people count) ────────────
   const branchLoadsForDate = React.useMemo(() => {
     const map = new Map<
       number,
@@ -253,18 +239,13 @@ const DashboardSection: React.FC = () => {
       bookings: info.bookings,
     }));
 
-    // sort descending by people
     arr.sort((a, b) => b.people - a.people);
 
     return arr;
   }, [filteredForDate, branches]);
 
-  // ─────────────────────────────
-  // RENDER
-  // ─────────────────────────────
   return (
     <Box>
-      {/* Title */}
       <Stack spacing={1} mb={3}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Хянах самбар
@@ -275,7 +256,6 @@ const DashboardSection: React.FC = () => {
         </Typography>
       </Stack>
 
-      {/* Filters */}
       <Paper
         sx={{
           p: 2,
@@ -339,7 +319,6 @@ const DashboardSection: React.FC = () => {
         )}
       </Paper>
 
-      {/* Top metrics cards */}
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={2}
@@ -429,12 +408,10 @@ const DashboardSection: React.FC = () => {
         </Paper>
       </Stack>
 
-      {/* Bottom section: Top services + branch loads */}
       <Stack
         direction={{ xs: 'column', lg: 'row' }}
         spacing={2}
       >
-        {/* Top services */}
         <Paper
           sx={{
             flex: 1,
@@ -513,7 +490,6 @@ const DashboardSection: React.FC = () => {
           </Stack>
         </Paper>
 
-        {/* Branch load for selected date */}
         <Paper
           sx={{
             flex: 1,
@@ -543,8 +519,6 @@ const DashboardSection: React.FC = () => {
 
           <Stack spacing={1.5}>
             {branchLoadsForDate.map((b) => {
-              // rough utilization: bookings count only (no capacity), you can later
-              // calculate based on capacity & цаг if хүсвэл.
               return (
                 <Box
                   key={b.branchId}

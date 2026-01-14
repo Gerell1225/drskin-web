@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'; // 👈 NEW
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { supabase } from '@/lib/supabaseClient';
 
 export type ServiceCategory = 'skin' | 'hair';
@@ -76,7 +76,6 @@ const ServicesSection: React.FC<Props> = ({
 
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // 👇 NEW: track which service is being deleted
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -348,7 +347,6 @@ const ServicesSection: React.FC<Props> = ({
     }
   };
 
-  // 💥 DELETE SERVICE (DB + state)
   const handleDelete = async (service: Service) => {
     const ok = window.confirm(
       `"${service.name}" үйлчилгээг устгах уу? Холбоотой захиалгууд байвал гараар засварлах шаардлагатай.`,
@@ -358,7 +356,6 @@ const ServicesSection: React.FC<Props> = ({
     setDeletingId(service.id);
 
     try {
-      // 1) delete branch price rows (in case FK is not cascade)
       const { error: priceError } = await supabase
         .from('service_branch_prices')
         .delete()
@@ -366,10 +363,8 @@ const ServicesSection: React.FC<Props> = ({
 
       if (priceError) {
         console.error('Delete service_branch_prices error:', priceError);
-        // continue anyway – maybe cascade is already set
       }
 
-      // 2) delete service
       const { error } = await supabase
         .from('services')
         .delete()
@@ -381,7 +376,6 @@ const ServicesSection: React.FC<Props> = ({
         return;
       }
 
-      // 3) remove from local state
       setServices((prev) => prev.filter((s) => s.id !== service.id));
     } finally {
       setDeletingId(null);
@@ -542,7 +536,6 @@ const ServicesSection: React.FC<Props> = ({
                 </Box>
               </Box>
 
-              {/* Үйлдэл: Edit + Delete */}
               <Stack direction="row" spacing={0.5}>
                 <IconButton
                   size="small"
@@ -564,7 +557,6 @@ const ServicesSection: React.FC<Props> = ({
         ))}
       </Stack>
 
-      {/* CREATE / EDIT dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -644,7 +636,6 @@ const ServicesSection: React.FC<Props> = ({
               label="Идэвхтэй үйлчилгээ"
             />
 
-            {/* Branch prices editor */}
             <Box>
               <Typography
                 variant="subtitle2"
