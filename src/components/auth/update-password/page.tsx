@@ -6,161 +6,188 @@ import {
   Container,
   Card,
   CardContent,
+  Typography,
   TextField,
   Button,
-  Typography,
   Stack,
+  CircularProgress,
   Alert,
 } from '@mui/material';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-const UpdatePasswordPage: React.FC = () => {
-  const [loadingUser, setLoadingUser] = React.useState(true);
-  const [hasSession, setHasSession] = React.useState(false);
+type Status = 'checking' | 'ready' | 'success' | 'error';
 
-  const [password1, setPassword1] = React.useState('');
+const UpdatePasswordPage: React.FC = () => {
+  const router = useRouter();
+
+  const [status, setStatus] = React.useState<Status>('checking');
+  const [password, setPassword] = React.useState('');
   const [password2, setPassword2] = React.useState('');
-  const [saving, setSaving] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     const init = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        console.error('getUser error on update-password:', error);
-        setHasSession(false);
-      } else {
-        setHasSession(!!data.user);
-      }
-      setLoadingUser(false);
-    };
-    init();
-  }, []);
+      setStatus('checking');
+      setErrorMsg(null);
 
-  const handleChangePassword = async () => {
-    setErrorMsg(null);
-    setSuccessMsg(null);
+      const { data, error } = await supabase.auth.getSession();
 
-    if (!password1 || password1.length < 6) {
-      setErrorMsg('Нууц үг дор хаяж 6 тэмдэгт байх ёстой.');
-      return;
-    }
-    if (password1 !== password2) {
-      setErrorMsg('Нууц үг хоорондоо таарахгүй байна.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: password1,
-      });
-
-      if (error) {
-        console.error('updateUser (password) error:', error);
+      if (error || !data.session) {
+        console.error('No valid recovery session:', error);
         setErrorMsg(
-          'Нууц үг солиход алдаа гарлаа. Холбоосын хугацаа дууссан байж магадгүй.',
+          'Нууц үг шинэчлэх линк буруу эсвэл хугацаа нь дууссан байна. Дахин нууц үг сэргээх хүсэлт илгээнэ үү.',
         );
+        setStatus('error');
         return;
       }
 
-      setSuccessMsg(
-        'Нууц үг амжилттай солигдлоо. Одоо шинэ нууц үгээ ашиглан нэвтэрч болно.',
-      );
-      setPassword1('');
+      if (typeof window !== 'undefined' && window.location.hash) {
+        const url = new URL(window.location.href);
+        url.hash = '';
+        window.history.replaceState({}, '', url.toString());
+      }
+
+      setStatus('ready');
+    };
+
+    init();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+
+    if (!password || password.length < 6) {
+      setErrorMsg('Шинэ нууц үг дор хаяж 6 тэмдэгт байх ёстой.');
+      return;
+    }
+
+    if (password !== password2) {
+      setErrorMsg('Нууц үг хоёр хоорондоо таарахгүй байна.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+
+      if (error) {
+        console.error('Update password error:', error);
+        setErrorMsg(
+          'Нууц үг шинэчлэхэд алдаа гарлаа. Линкний хугацаа дууссан байж магадгүй. Дахин оролдоно уу.',
+        );
+        setStatus('error');
+        return;
+      }
+
+      setStatus('success');
+      setPassword('');
       setPassword2('');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
-  if (loadingUser) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-        <Container maxWidth="sm">
-          <Typography align="center">Ачаалж байна…</Typography>
-        </Container>
-      </Box>
-    );
-  }
-
-  if (!hasSession) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-        <Container maxWidth="sm">
-          <Card sx={{ borderRadius: 4, boxShadow: 4 }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-                Холбоосын алдаа
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Нууц үг сэргээх холбоос буруу эсвэл хугацаа нь дууссан байна.
-                Дахин &quot;Нууц үг сэргээх&quot; хүсэлт илгээнэ үү.
-              </Typography>
-              <Button
-                href="/"
-                variant="contained"
-                color="primary"
-                sx={{ textTransform: 'none', borderRadius: 999 }}
-              >
-                Нүүр хуудас руу буцах
-              </Button>
-            </CardContent>
-          </Card>
-        </Container>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        bgcolor: '#f5f5f7',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 4,
+      }}
+    >
       <Container maxWidth="sm">
         <Card sx={{ borderRadius: 4, boxShadow: 4 }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
-              Шинэ нууц үг тохируулах
+          <CardContent sx={{ p: { xs: 3, md: 4 } }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+              Нууц үг шинэчлэх
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Шинэ нууц үгээ оруулаад баталгаажуулна уу.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Шинэ нууц үгээ оруулж баталгаажуулна уу.
             </Typography>
 
-            <Stack spacing={2}>
-              <TextField
-                label="Шинэ нууц үг"
-                type="password"
-                size="small"
-                fullWidth
-                value={password1}
-                onChange={(e) => setPassword1(e.target.value)}
-              />
-              <TextField
-                label="Шинэ нууц үг давтах"
-                type="password"
-                size="small"
-                fullWidth
-                value={password2}
-                onChange={(e) => setPassword2(e.target.value)}
-              />
-
-              {errorMsg && <Alert severity="error">{errorMsg}</Alert>}
-              {successMsg && <Alert severity="success">{successMsg}</Alert>}
-
-              <Button
-                variant="contained"
-                color="primary"
+            {status === 'checking' && (
+              <Box
                 sx={{
-                  mt: 1,
-                  textTransform: 'none',
-                  borderRadius: 999,
-                  py: 1,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  py: 4,
                 }}
-                onClick={handleChangePassword}
-                disabled={saving}
               >
-                {saving ? 'Хадгалж байна…' : 'Нууц үг солих'}
-              </Button>
-            </Stack>
+                <CircularProgress size={28} />
+              </Box>
+            )}
+
+            {status !== 'checking' && (
+              <form onSubmit={handleSubmit}>
+                <Stack spacing={2}>
+                  {status === 'success' && (
+                    <Alert severity="success">
+                      Нууц үг амжилттай шинэчлэгдлээ. Одоо шинэ нууц үгээрээ нэвтэрч орж болно.
+                    </Alert>
+                  )}
+
+                  {status === 'error' && errorMsg && (
+                    <Alert severity="error">{errorMsg}</Alert>
+                  )}
+
+                  {status !== 'success' && (
+                    <>
+                      <TextField
+                        label="Шинэ нууц үг"
+                        type="password"
+                        size="small"
+                        fullWidth
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                      <TextField
+                        label="Шинэ нууц үг давтах"
+                        type="password"
+                        size="small"
+                        fullWidth
+                        value={password2}
+                        onChange={(e) => setPassword2(e.target.value)}
+                      />
+
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="primary"
+                        disabled={loading}
+                        sx={{
+                          mt: 1,
+                          borderRadius: 999,
+                          textTransform: 'none',
+                          py: 1,
+                        }}
+                      >
+                        {loading ? 'Шинэчилж байна...' : 'Нууц үг шинэчлэх'}
+                      </Button>
+                    </>
+                  )}
+
+                  {status === 'success' && (
+                    <Button
+                      variant="outlined"
+                      sx={{
+                        mt: 1,
+                        borderRadius: 999,
+                        textTransform: 'none',
+                      }}
+                      onClick={() => router.push('/')}
+                    >
+                      Нүүр хуудас руу буцах
+                    </Button>
+                  )}
+                </Stack>
+              </form>
+            )}
           </CardContent>
         </Card>
       </Container>
