@@ -30,7 +30,6 @@ import ProfileDrawer from '@/components/auth/ProfileDrawer';
 const navItems = [
   { id: 'services', label: 'Үйлчилгээ' },
   { id: 'branches', label: 'Салбарууд' },
-  { id: 'loyalty', label: 'Оноо' },
 ];
 
 function scrollToId(id: string) {
@@ -50,7 +49,6 @@ const Header: React.FC = () => {
   const [userEmail, setUserEmail] = React.useState<string | null>(null);
   const isMobile = useMediaQuery('(max-width:900px)');
 
-  // Check existing session
   React.useEffect(() => {
     const checkUser = async () => {
       const { data } = await supabase.auth.getUser();
@@ -107,7 +105,6 @@ const Header: React.FC = () => {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          {/* Logo */}
           <Box
             sx={{
               display: 'flex',
@@ -129,7 +126,6 @@ const Header: React.FC = () => {
             </Typography>
           </Box>
 
-          {/* Desktop nav */}
           {!isMobile && (
             <Stack direction="row" spacing={3} alignItems="center">
               {navItems.map((item) => (
@@ -144,7 +140,6 @@ const Header: React.FC = () => {
             </Stack>
           )}
 
-          {/* Desktop right side */}
           {!isMobile && (
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Stack direction="row" spacing={1}>
@@ -186,7 +181,6 @@ const Header: React.FC = () => {
             </Stack>
           )}
 
-          {/* Mobile right side */}
           {isMobile && (
             <Stack direction="row" spacing={1} alignItems="center">
               <IconButton
@@ -209,7 +203,6 @@ const Header: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile nav drawer */}
       <Drawer
         anchor="right"
         open={drawerOpen}
@@ -241,14 +234,12 @@ const Header: React.FC = () => {
         </Box>
       </Drawer>
 
-      {/* Login dialog */}
       <LoginDialog
         open={loginOpen}
         onClose={handleCloseLogin}
         onLoggedIn={handleLoggedIn}
       />
 
-      {/* Profile drawer */}
       <ProfileDrawer
         open={profileOpen}
         onClose={() => setProfileOpen(false)}

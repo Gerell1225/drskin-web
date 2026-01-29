@@ -37,7 +37,7 @@ export type Customer = {
   email: string | null;
   totalPoints: number;
   totalVisits: number;
-  lastVisit: string | null; // YYYY-MM-DD
+  lastVisit: string | null;
   isActive: boolean;
 };
 
@@ -45,16 +45,14 @@ const CustomersSection: React.FC = () => {
   const [customers, setCustomers] = React.useState<Customer[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // filters
   const [search, setSearch] = React.useState('');
-  const [statusFilter, setStatusFilter] =
-    React.useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = React.useState<
+    'all' | 'active' | 'inactive'
+  >('all');
 
-  // dialog state (edit only)
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editingId, setEditingId] = React.useState<number | null>(null);
 
-  // form state
   const [formName, setFormName] = React.useState('');
   const [formPhone, setFormPhone] = React.useState('');
   const [formEmail, setFormEmail] = React.useState('');
@@ -65,9 +63,6 @@ const CustomersSection: React.FC = () => {
   const [saving, setSaving] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // ─────────────────────────────
-  // LOAD customers
-  // ─────────────────────────────
   const fetchCustomers = React.useCallback(async () => {
     setLoading(true);
 
@@ -86,7 +81,7 @@ const CustomersSection: React.FC = () => {
 
     const list: Customer[] = (data ?? []).map((row: any) => ({
       id: row.id,
-      name: row.name ?? '', // if you have only email now, this will just be empty
+      name: row.name ?? '',
       phone: row.phone ?? null,
       email: row.email ?? null,
       totalPoints: row.total_points ?? 0,
@@ -103,9 +98,6 @@ const CustomersSection: React.FC = () => {
     fetchCustomers();
   }, [fetchCustomers]);
 
-  // ─────────────────────────────
-  // FILTERED LIST
-  // ─────────────────────────────
   const filtered = React.useMemo(() => {
     const s = search.trim().toLowerCase();
 
@@ -128,9 +120,6 @@ const CustomersSection: React.FC = () => {
     0,
   );
 
-  // ─────────────────────────────
-  // EDIT DIALOG HELPERS
-  // ─────────────────────────────
   const openEdit = (customer: Customer) => {
     setEditingId(customer.id);
     setFormName(customer.name);
@@ -149,9 +138,6 @@ const CustomersSection: React.FC = () => {
     setDialogOpen(false);
   };
 
-  // ─────────────────────────────
-  // SAVE (UPDATE ONLY)
-  // ─────────────────────────────
   const handleSave = async () => {
     setErrorMsg(null);
 
@@ -216,8 +202,8 @@ const CustomersSection: React.FC = () => {
           Хэрэглэгчид / Loyalty Оноо
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Хэрэглэгчийн мэдээлэл, оноо болон үйлчлэлийн статистикийг эндээс
-          хянаж удирдана. Хэрэглэгчид өөрсдөө бүртгэл үүсгэнэ.
+          Хэрэглэгчийн мэдээлэл, оноо болон үйлчлэлийн статистикийг эндээс хянаж
+          удирдана. Хэрэглэгчид өөрсдөө бүртгэл үүсгэнэ.
         </Typography>
       </Stack>
 
@@ -227,11 +213,7 @@ const CustomersSection: React.FC = () => {
         mb={2}
         alignItems={{ xs: 'stretch', md: 'center' }}
       >
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          flex={1}
-        >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flex={1}>
           <Paper
             sx={{
               flex: 1,
@@ -362,9 +344,7 @@ const CustomersSection: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {c.phone || '-'}
-                    </Typography>
+                    <Typography variant="body2">{c.phone || '-'}</Typography>
                   </TableCell>
                   <TableCell align="right">
                     {c.totalPoints.toLocaleString('en-US')} оноо

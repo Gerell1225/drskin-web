@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'; // 👈 NEW
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { supabase } from '@/lib/supabaseClient';
 
 export type ServiceCategory = 'skin' | 'hair';
@@ -76,7 +76,6 @@ const ServicesSection: React.FC<Props> = ({
 
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // 👇 NEW: track which service is being deleted
   const [deletingId, setDeletingId] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -117,13 +116,11 @@ const ServicesSection: React.FC<Props> = ({
           return {
             branchId: b.id,
             enabled: found ? !!found.enabled : false,
-            price:
-              found && found.price != null ? String(found.price) : '',
+            price: found && found.price != null ? String(found.price) : '',
           };
         });
 
-        const cat: ServiceCategory =
-          row.category === 'hair' ? 'hair' : 'skin';
+        const cat: ServiceCategory = row.category === 'hair' ? 'hair' : 'skin';
 
         return {
           id: row.id,
@@ -172,9 +169,7 @@ const ServicesSection: React.FC<Props> = ({
     setFormIsActive(service.isActive);
 
     const bp = branches.map((b) => {
-      const found = service.branchPrices.find(
-        (p) => p.branchId === b.id,
-      );
+      const found = service.branchPrices.find((p) => p.branchId === b.id);
       return (
         found || {
           branchId: b.id,
@@ -201,9 +196,7 @@ const ServicesSection: React.FC<Props> = ({
   ) => {
     setFormBranchPrices((prev) =>
       prev.map((bp) =>
-        bp.branchId === branchId
-          ? { ...bp, [field]: value }
-          : bp,
+        bp.branchId === branchId ? { ...bp, [field]: value } : bp,
       ),
     );
   };
@@ -234,10 +227,7 @@ const ServicesSection: React.FC<Props> = ({
       service_id: editingId ?? null,
       branch_id: bp.branchId,
       enabled: bp.enabled,
-      price:
-        bp.enabled && bp.price.trim() !== ''
-          ? Number(bp.price)
-          : 0,
+      price: bp.enabled && bp.price.trim() !== '' ? Number(bp.price) : 0,
     }));
 
     setSaving(true);
@@ -275,16 +265,13 @@ const ServicesSection: React.FC<Props> = ({
 
         if (priceError) {
           console.error('Insert price error:', priceError);
-          setErrorMsg(
-            'Үнийн тохиргоог хадгалахад алдаа гарлаа.',
-          );
+          setErrorMsg('Үнийн тохиргоог хадгалахад алдаа гарлаа.');
         }
 
         const newService: Service = {
           id: data.id,
           name: data.name ?? '',
-          category:
-            data.category === 'hair' ? 'hair' : 'skin',
+          category: data.category === 'hair' ? 'hair' : 'skin',
           description: data.description ?? '',
           durationMinutes: data.duration_minutes ?? 60,
           isActive: data.is_active ?? true,
@@ -322,16 +309,13 @@ const ServicesSection: React.FC<Props> = ({
 
         if (priceError) {
           console.error('Update price error:', priceError);
-          setErrorMsg(
-            'Үнийн тохиргоог хадгалахад алдаа гарлаа.',
-          );
+          setErrorMsg('Үнийн тохиргоог хадгалахад алдаа гарлаа.');
         }
 
         const updated: Service = {
           id: data.id,
           name: data.name ?? '',
-          category:
-            data.category === 'hair' ? 'hair' : 'skin',
+          category: data.category === 'hair' ? 'hair' : 'skin',
           description: data.description ?? '',
           durationMinutes: data.duration_minutes ?? 60,
           isActive: data.is_active ?? true,
@@ -348,7 +332,6 @@ const ServicesSection: React.FC<Props> = ({
     }
   };
 
-  // 💥 DELETE SERVICE (DB + state)
   const handleDelete = async (service: Service) => {
     const ok = window.confirm(
       `"${service.name}" үйлчилгээг устгах уу? Холбоотой захиалгууд байвал гараар засварлах шаардлагатай.`,
@@ -358,7 +341,6 @@ const ServicesSection: React.FC<Props> = ({
     setDeletingId(service.id);
 
     try {
-      // 1) delete branch price rows (in case FK is not cascade)
       const { error: priceError } = await supabase
         .from('service_branch_prices')
         .delete()
@@ -366,10 +348,8 @@ const ServicesSection: React.FC<Props> = ({
 
       if (priceError) {
         console.error('Delete service_branch_prices error:', priceError);
-        // continue anyway – maybe cascade is already set
       }
 
-      // 2) delete service
       const { error } = await supabase
         .from('services')
         .delete()
@@ -377,11 +357,12 @@ const ServicesSection: React.FC<Props> = ({
 
       if (error) {
         console.error('Delete service error:', error);
-        alert('Үйлчилгээ устгахад алдаа гарлаа. Холбоотой захиалга байж магадгүй.');
+        alert(
+          'Үйлчилгээ устгахад алдаа гарлаа. Холбоотой захиалга байж магадгүй.',
+        );
         return;
       }
 
-      // 3) remove from local state
       setServices((prev) => prev.filter((s) => s.id !== service.id));
     } finally {
       setDeletingId(null);
@@ -436,8 +417,8 @@ const ServicesSection: React.FC<Props> = ({
 
         {!loading && services.length === 0 && (
           <Typography variant="body2" color="text.secondary">
-            Одоогоор үйлчилгээ бүртгэгдээгүй байна. &quot;Үйлчилгээ
-            нэмэх&quot; товчоор шинээр үүсгэнэ үү.
+            Одоогоор үйлчилгээ бүртгэгдээгүй байна. &quot;Үйлчилгээ нэмэх&quot;
+            товчоор шинээр үүсгэнэ үү.
           </Typography>
         )}
 
@@ -457,25 +438,13 @@ const ServicesSection: React.FC<Props> = ({
               alignItems={{ xs: 'flex-start', sm: 'center' }}
             >
               <Box sx={{ flex: 1 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  mb={0.5}
-                >
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ fontWeight: 600 }}
-                  >
+                <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {service.name}
                   </Typography>
                   <Chip
                     size="small"
-                    label={
-                      service.category === 'hair'
-                        ? 'Үс'
-                        : 'Арьс'
-                    }
+                    label={service.category === 'hair' ? 'Үс' : 'Арьс'}
                     color={service.category === 'hair' ? 'info' : 'primary'}
                     sx={{ fontSize: 11 }}
                   />
@@ -491,8 +460,7 @@ const ServicesSection: React.FC<Props> = ({
                   color="text.secondary"
                   sx={{ mb: 0.5 }}
                 >
-                  {service.description ||
-                    'Тайлбар оруулаагүй байна.'}
+                  {service.description || 'Тайлбар оруулаагүй байна.'}
                 </Typography>
                 <Typography
                   variant="caption"
@@ -510,11 +478,7 @@ const ServicesSection: React.FC<Props> = ({
                   >
                     Салбар тус бүрийн үнэ:
                   </Typography>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    flexWrap="wrap"
-                  >
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
                     {branches.map((b) => {
                       const bp = service.branchPrices.find(
                         (p) => p.branchId === b.id,
@@ -528,9 +492,9 @@ const ServicesSection: React.FC<Props> = ({
                           size="small"
                           label={
                             enabled && price
-                              ? `${b.name}: ${Number(
-                                  price,
-                                ).toLocaleString('en-US')} ₮`
+                              ? `${b.name}: ${Number(price).toLocaleString(
+                                  'en-US',
+                                )} ₮`
                               : `${b.name}: идэвхгүй`
                           }
                           color={enabled ? 'primary' : 'default'}
@@ -542,12 +506,8 @@ const ServicesSection: React.FC<Props> = ({
                 </Box>
               </Box>
 
-              {/* Үйлдэл: Edit + Delete */}
               <Stack direction="row" spacing={0.5}>
-                <IconButton
-                  size="small"
-                  onClick={() => openEdit(service)}
-                >
+                <IconButton size="small" onClick={() => openEdit(service)}>
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
@@ -564,7 +524,6 @@ const ServicesSection: React.FC<Props> = ({
         ))}
       </Stack>
 
-      {/* CREATE / EDIT dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -572,9 +531,7 @@ const ServicesSection: React.FC<Props> = ({
         maxWidth="sm"
       >
         <DialogTitle>
-          {mode === 'create'
-            ? 'Үйлчилгээ нэмэх'
-            : 'Үйлчилгээ засах'}
+          {mode === 'create' ? 'Үйлчилгээ нэмэх' : 'Үйлчилгээ засах'}
         </DialogTitle>
         <DialogContent sx={{ pt: 1 }}>
           <Stack spacing={2} mt={1}>
@@ -586,22 +543,15 @@ const ServicesSection: React.FC<Props> = ({
               onChange={(e) => setFormName(e.target.value)}
             />
 
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={2}
-            >
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <FormControl fullWidth size="small">
-                <InputLabel id="category-label">
-                  Төрөл
-                </InputLabel>
+                <InputLabel id="category-label">Төрөл</InputLabel>
                 <Select
                   labelId="category-label"
                   label="Төрөл"
                   value={formCategory}
                   onChange={(e) =>
-                    setFormCategory(
-                      e.target.value as ServiceCategory,
-                    )
+                    setFormCategory(e.target.value as ServiceCategory)
                   }
                 >
                   <MenuItem value="skin">Арьс / Facial</MenuItem>
@@ -626,42 +576,33 @@ const ServicesSection: React.FC<Props> = ({
               multiline
               minRows={2}
               value={formDescription}
-              onChange={(e) =>
-                setFormDescription(e.target.value)
-              }
+              onChange={(e) => setFormDescription(e.target.value)}
             />
 
             <FormControlLabel
               control={
                 <Switch
                   checked={formIsActive}
-                  onChange={(e) =>
-                    setFormIsActive(e.target.checked)
-                  }
+                  onChange={(e) => setFormIsActive(e.target.checked)}
                   color="primary"
                 />
               }
               label="Идэвхтэй үйлчилгээ"
             />
 
-            {/* Branch prices editor */}
             <Box>
-              <Typography
-                variant="subtitle2"
-                sx={{ mb: 1 }}
-              >
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 Салбарын үнэ
               </Typography>
               <Stack spacing={1.5}>
                 {branches.map((b) => {
-                  const bp =
-                    formBranchPrices.find(
-                      (p) => p.branchId === b.id,
-                    ) || {
-                      branchId: b.id,
-                      enabled: false,
-                      price: '',
-                    };
+                  const bp = formBranchPrices.find(
+                    (p) => p.branchId === b.id,
+                  ) || {
+                    branchId: b.id,
+                    enabled: false,
+                    price: '',
+                  };
 
                   return (
                     <Stack
@@ -695,11 +636,7 @@ const ServicesSection: React.FC<Props> = ({
                         disabled={!bp.enabled}
                         value={bp.price}
                         onChange={(e) =>
-                          updateBranchPrice(
-                            b.id,
-                            'price',
-                            e.target.value,
-                          )
+                          updateBranchPrice(b.id, 'price', e.target.value)
                         }
                       />
                     </Stack>

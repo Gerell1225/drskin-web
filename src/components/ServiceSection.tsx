@@ -12,12 +12,18 @@ import {
 } from '@mui/material';
 import { supabase } from '@/lib/supabaseClient';
 
+type ServiceBranchPriceRow = {
+  price: number | null;
+  enabled: boolean | null;
+};
+
 type ServiceRow = {
   id: number;
   name: string;
   description: string | null;
   category: string | null;
   is_active?: boolean | null;
+  service_branch_prices?: ServiceBranchPriceRow[];
 };
 
 const ServicesSection: React.FC = () => {
@@ -30,7 +36,19 @@ const ServicesSection: React.FC = () => {
 
       const { data, error } = await supabase
         .from('services')
-        .select('id, name, description, category, is_active')
+        .select(
+          `
+          id,
+          name,
+          description,
+          category,
+          is_active,
+          service_branch_prices (
+            price,
+            enabled
+          )
+        `,
+        )
         .order('name', { ascending: true });
 
       if (error) {
@@ -39,10 +57,7 @@ const ServicesSection: React.FC = () => {
       } else {
         const list = (data ?? []) as ServiceRow[];
 
-        // If you don't have is_active, this filter will just keep all
-        const filtered = list.filter(
-          (s) => s.is_active !== false, // keep null/true as active
-        );
+        const filtered = list.filter((s) => s.is_active !== false);
 
         setServices(filtered);
       }
@@ -55,6 +70,34 @@ const ServicesSection: React.FC = () => {
 
   const isEmpty = !loading && services.length === 0;
 
+  const getPriceText = (service: ServiceRow): string => {
+    const prices =
+      service.service_branch_prices
+        ?.filter((p) => p.enabled !== false && p.price != null)
+        .map((p) => Number(p.price)) ?? [];
+
+    if (prices.length === 0) {
+      return 'Үнэ: салбараас хамаарна';
+    }
+
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+
+    if (min === max) {
+      return `Үнэ: ${min.toLocaleString('en-US')} ₮`;
+    }
+
+    return `Үнэ: ${min.toLocaleString('en-US')} – ${max.toLocaleString(
+      'en-US',
+    )} ₮`;
+  };
+
+  const getCategoryLabel = (category: string | null) => {
+    if (category === 'hair') return 'Hair';
+    if (category === 'skin') return 'Facial & Skin';
+    return '';
+  };
+
   return (
     <Box
       id="services"
@@ -64,7 +107,6 @@ const ServicesSection: React.FC = () => {
     >
       <Container maxWidth="lg">
         <Stack spacing={3}>
-          {/* Title */}
           <Box>
             <Typography
               variant="h4"
@@ -77,7 +119,6 @@ const ServicesSection: React.FC = () => {
             </Typography>
           </Box>
 
-          {/* Horizontal scroll list */}
           <Box
             sx={{
               display: 'flex',
@@ -93,7 +134,6 @@ const ServicesSection: React.FC = () => {
               },
             }}
           >
-            {/* Loading skeletons */}
             {loading &&
               Array.from({ length: 4 }).map((_, i) => (
                 <Card
@@ -120,7 +160,6 @@ const ServicesSection: React.FC = () => {
                 </Card>
               ))}
 
-            {/* Real data */}
             {!loading &&
               services.map((service) => (
                 <Card
@@ -145,7 +184,7 @@ const ServicesSection: React.FC = () => {
                         color="primary"
                         sx={{ textTransform: 'uppercase', mb: 1 }}
                       >
-                        {service.category === 'hair' ? 'Hair' : 'Facial & Skin'}
+                        {getCategoryLabel(service.category)}
                       </Typography>
                     )}
                     <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
@@ -160,13 +199,12 @@ const ServicesSection: React.FC = () => {
                         'Dr.Skin эмч нарын мэргэжлийн үйлчилгээ.'}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
-                      Үнэ: салбараас хамаарна
+                      {getPriceText(service)}
                     </Typography>
                   </CardContent>
                 </Card>
               ))}
 
-            {/* No services case */}
             {isEmpty && (
               <Box
                 sx={{

@@ -1,4 +1,3 @@
-// src/components/admin/BookingsSection.tsx
 'use client';
 
 import React from 'react';
@@ -46,13 +45,13 @@ type ServiceRef = {
   name: string;
   category: 'skin' | 'hair';
   isActive: boolean;
-  enabledBranchIds: number[]; // branches where this service is enabled
+  enabledBranchIds: number[];
 };
 
 type Booking = {
   id: number;
-  date: string; // YYYY-MM-DD
-  time: string; // HH:mm
+  date: string;
+  time: string;
   branchId: number;
   serviceId: number;
   customerName: string;
@@ -87,25 +86,20 @@ const BookingsSection: React.FC = () => {
   const [bookings, setBookings] = React.useState<Booking[]>([]);
   const [loading, setLoading] = React.useState(false);
 
-  // filters
-  const today = React.useMemo(
-    () => new Date().toISOString().slice(0, 10),
-    [],
-  );
+  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [selectedDate, setSelectedDate] = React.useState<string>(today);
-  const [branchFilter, setBranchFilter] =
-    React.useState<number | 'all'>('all');
-  const [channelFilter, setChannelFilter] =
-    React.useState<BookingChannel | 'all'>('all');
-  const [statusFilter, setStatusFilter] =
-    React.useState<BookingStatus | 'all'>('all');
+  const [branchFilter, setBranchFilter] = React.useState<number | 'all'>('all');
+  const [channelFilter, setChannelFilter] = React.useState<
+    BookingChannel | 'all'
+  >('all');
+  const [statusFilter, setStatusFilter] = React.useState<BookingStatus | 'all'>(
+    'all',
+  );
 
-  // dialog state
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [mode, setMode] = React.useState<'create' | 'edit'>('create');
   const [editingId, setEditingId] = React.useState<number | null>(null);
 
-  // form state (use number | null to avoid number-vs-string issues)
   const [formDate, setFormDate] = React.useState(today);
   const [formTime, setFormTime] = React.useState('10:00');
   const [formBranchId, setFormBranchId] = React.useState<number | null>(null);
@@ -113,18 +107,12 @@ const BookingsSection: React.FC = () => {
   const [formCustomerName, setFormCustomerName] = React.useState('');
   const [formCustomerPhone, setFormCustomerPhone] = React.useState('');
   const [formPeopleCount, setFormPeopleCount] = React.useState('1');
-  const [formStatus, setFormStatus] =
-    React.useState<BookingStatus>('pending');
+  const [formStatus, setFormStatus] = React.useState<BookingStatus>('pending');
 
   const [saving, setSaving] = React.useState(false);
-  const [capacityError, setCapacityError] = React.useState<string | null>(
-    null,
-  );
+  const [capacityError, setCapacityError] = React.useState<string | null>(null);
   const [formError, setFormError] = React.useState<string | null>(null);
 
-  // ─────────────────────────────
-  // LOAD data from Supabase
-  // ─────────────────────────────
   React.useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
@@ -217,7 +205,6 @@ const BookingsSection: React.FC = () => {
       setServices(serviceList);
       setBookings(bookingsList);
 
-      // default form values
       if (branchList[0] && formBranchId == null) {
         setFormBranchId(branchList[0].id);
       }
@@ -229,12 +216,8 @@ const BookingsSection: React.FC = () => {
     };
 
     loadAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─────────────────────────────
-  // HELPERS
-  // ─────────────────────────────
   const getBranchName = (id: number) =>
     branches.find((b) => b.id === id)?.name || `#${id}`;
 
@@ -252,21 +235,17 @@ const BookingsSection: React.FC = () => {
   ): number => {
     const b = branches.find((br) => br.id === branchId);
     if (!b) return 0;
-    return category === 'skin' ? b.capacitySkin ?? 0 : b.capacityHair ?? 0;
+    return category === 'skin' ? (b.capacitySkin ?? 0) : (b.capacityHair ?? 0);
   };
 
-  // Only services enabled for selected branch (plus current selection, to avoid blank on edit)
   const availableServices = React.useMemo(() => {
     const branchIdNumber = formBranchId;
 
     return services.filter((s) => {
       if (!s.isActive) return false;
 
-      // if no branch selected → show all active
       if (branchIdNumber == null) return true;
 
-      // if service has enabled branches, require this branch,
-      // but always keep currently selected service visible
       if (s.enabledBranchIds && s.enabledBranchIds.length > 0) {
         const isEnabled = s.enabledBranchIds.includes(branchIdNumber);
         if (!isEnabled && formServiceId === s.id) {
@@ -275,14 +254,10 @@ const BookingsSection: React.FC = () => {
         return isEnabled;
       }
 
-      // no explicit enabled list → treat as globally available
       return true;
     });
   }, [services, formBranchId, formServiceId]);
 
-  // ─────────────────────────────
-  // FILTERED bookings for table & stats
-  // ─────────────────────────────
   const filtered = React.useMemo(() => {
     return bookings.filter((b) => {
       if (selectedDate && b.date !== selectedDate) return false;
@@ -295,7 +270,6 @@ const BookingsSection: React.FC = () => {
 
   const totalBookings = filtered.length;
 
-  // Only ONLINE + PAID for revenue card
   const onlinePaidRevenue = filtered
     .filter(
       (b) =>
@@ -310,9 +284,6 @@ const BookingsSection: React.FC = () => {
     (b) => b.paymentStatus === 'pending',
   ).length;
 
-  // ─────────────────────────────
-  // DIALOG helpers
-  // ─────────────────────────────
   const resetFormErrors = () => {
     setCapacityError(null);
     setFormError(null);
@@ -338,9 +309,7 @@ const BookingsSection: React.FC = () => {
     setFormDate(selectedDate || today);
     setFormTime('10:00');
     setFormBranchId(defaultBranchId);
-    setFormServiceId(
-      servicesForBranch[0]?.id ?? services[0]?.id ?? null,
-    );
+    setFormServiceId(servicesForBranch[0]?.id ?? services[0]?.id ?? null);
     setFormCustomerName('');
     setFormCustomerPhone('');
     setFormPeopleCount('1');
@@ -367,10 +336,6 @@ const BookingsSection: React.FC = () => {
     if (saving) return;
     setDialogOpen(false);
   };
-
-  // ─────────────────────────────
-  // CAPACITY CHECK
-  // ─────────────────────────────
   const checkCapacity = (): boolean => {
     setCapacityError(null);
 
@@ -379,13 +344,12 @@ const BookingsSection: React.FC = () => {
     const people = Number(formPeopleCount) || 1;
 
     if (!branchId || !serviceId || !formDate || !formTime) {
-      return true; // other validation will handle this
+      return true;
     }
 
     const category = getServiceCategory(serviceId);
     const capacity = getBranchCapacityForCategory(branchId, category);
 
-    // If capacity is 0 → no bookings for that category at this branch
     if (capacity <= 0) {
       setCapacityError(
         category === 'skin'
@@ -395,7 +359,6 @@ const BookingsSection: React.FC = () => {
       return false;
     }
 
-    // Calculate already booked people at same time & category
     const currentLoad = bookings
       .filter(
         (b) =>
@@ -419,13 +382,15 @@ const BookingsSection: React.FC = () => {
     return true;
   };
 
-  // ─────────────────────────────
-  // SAVE (INSERT / UPDATE)
-  // ─────────────────────────────
   const handleSave = async () => {
     resetFormErrors();
 
-    if (!formDate || !formTime || formBranchId == null || formServiceId == null) {
+    if (
+      !formDate ||
+      !formTime ||
+      formBranchId == null ||
+      formServiceId == null
+    ) {
       setFormError('Огноо, цаг, салбар, үйлчилгээг заавал бөглөнө үү.');
       return;
     }
@@ -438,7 +403,6 @@ const BookingsSection: React.FC = () => {
     const serviceId = formServiceId;
     const people = Number(formPeopleCount) || 1;
 
-    // capacity check (branch beds)
     const ok = checkCapacity();
     if (!ok) return;
 
@@ -450,10 +414,10 @@ const BookingsSection: React.FC = () => {
       customer_name: formCustomerName.trim(),
       customer_phone: formCustomerPhone.trim() || null,
       people_count: people,
-      channel: 'phone' as BookingChannel, // admin can only create PHONE bookings
+      channel: 'phone' as BookingChannel,
       status: formStatus,
-      total_amount: null, // phone bookings -> no online price
-      payment_status: null, // phone bookings -> no payment status
+      total_amount: null,
+      payment_status: null,
     };
 
     setSaving(true);
@@ -493,7 +457,6 @@ const BookingsSection: React.FC = () => {
           paymentStatus: data.payment_status as PaymentStatus | null,
         };
 
-        // add to state
         setBookings((prev) => [newBooking, ...prev]);
       } else if (mode === 'edit' && editingId != null) {
         const { data, error } = await supabase
@@ -541,12 +504,8 @@ const BookingsSection: React.FC = () => {
     }
   };
 
-  // ─────────────────────────────
-  // RENDER
-  // ─────────────────────────────
   return (
     <Box>
-      {/* Title */}
       <Stack spacing={1} mb={3}>
         <Typography variant="h4" sx={{ fontWeight: 700 }}>
           Захиалга
@@ -559,7 +518,6 @@ const BookingsSection: React.FC = () => {
         </Typography>
       </Stack>
 
-      {/* Filters + Add */}
       <Paper
         sx={{
           p: 2,
@@ -592,9 +550,7 @@ const BookingsSection: React.FC = () => {
                 value={branchFilter}
                 onChange={(e) =>
                   setBranchFilter(
-                    e.target.value === 'all'
-                      ? 'all'
-                      : Number(e.target.value),
+                    e.target.value === 'all' ? 'all' : Number(e.target.value),
                   )
                 }
               >
@@ -662,7 +618,6 @@ const BookingsSection: React.FC = () => {
         </Stack>
       </Paper>
 
-      {/* Summary cards */}
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={3}>
         <Paper
           sx={{
@@ -692,9 +647,7 @@ const BookingsSection: React.FC = () => {
             Онлайн орлого
           </Typography>
           <Typography variant="h5" sx={{ fontWeight: 700, mt: 1 }}>
-            {loading
-              ? '…'
-              : `${onlinePaidRevenue.toLocaleString('en-US')} ₮`}
+            {loading ? '…' : `${onlinePaidRevenue.toLocaleString('en-US')} ₮`}
           </Typography>
           <Typography variant="caption" color="text.secondary">
             Зөвхөн онлайн төлбөр төлсөн захиалга.
@@ -719,7 +672,6 @@ const BookingsSection: React.FC = () => {
         </Paper>
       </Stack>
 
-      {/* Table */}
       <Paper
         sx={{
           p: 2,
@@ -766,9 +718,7 @@ const BookingsSection: React.FC = () => {
                       {booking.customerPhone}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
-                    {booking.peopleCount}
-                  </TableCell>
+                  <TableCell align="right">{booking.peopleCount}</TableCell>
                   <TableCell>
                     <Chip
                       size="small"
@@ -824,10 +774,7 @@ const BookingsSection: React.FC = () => {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton
-                      size="small"
-                      onClick={() => openEdit(booking)}
-                    >
+                    <IconButton size="small" onClick={() => openEdit(booking)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -851,7 +798,6 @@ const BookingsSection: React.FC = () => {
         </Box>
       </Paper>
 
-      {/* CREATE/EDIT dialog */}
       <Dialog
         open={dialogOpen}
         onClose={handleCloseDialog}
@@ -899,9 +845,7 @@ const BookingsSection: React.FC = () => {
                   value={formBranchId ?? ''}
                   onChange={(e) => {
                     const val =
-                      e.target.value === ''
-                        ? null
-                        : Number(e.target.value);
+                      e.target.value === '' ? null : Number(e.target.value);
                     setFormBranchId(val);
                     resetFormErrors();
                   }}
@@ -922,9 +866,7 @@ const BookingsSection: React.FC = () => {
                   value={formServiceId ?? ''}
                   onChange={(e) => {
                     const val =
-                      e.target.value === ''
-                        ? null
-                        : Number(e.target.value);
+                      e.target.value === '' ? null : Number(e.target.value);
                     setFormServiceId(val);
                     resetFormErrors();
                   }}
@@ -967,8 +909,6 @@ const BookingsSection: React.FC = () => {
                 }}
                 fullWidth
               />
-
-              {/* Channel is fixed to phone for admin-created bookings, no field */}
               <FormControl fullWidth size="small">
                 <InputLabel id="status-select-label">
                   Захиалгын төлөв

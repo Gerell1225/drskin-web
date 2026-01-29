@@ -89,6 +89,18 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   const [pwError, setPwError] = React.useState<string | null>(null);
   const [pwSuccess, setPwSuccess] = React.useState<string | null>(null);
   const [pwSaving, setPwSaving] = React.useState(false);
+  const [pwDrawerOpen, setPwDrawerOpen] = React.useState(false);
+
+  // Close password drawer when profile drawer closes
+  React.useEffect(() => {
+    if (!open) {
+      setPwDrawerOpen(false);
+      setPwError(null);
+      setPwSuccess(null);
+      setNewPassword('');
+      setNewPassword2('');
+    }
+  }, [open]);
 
   // Load profile + history when drawer opens
   React.useEffect(() => {
@@ -98,7 +110,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      // 1) Auth user (for id + email)
+      // 1) Auth user
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
 
@@ -111,9 +123,11 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
-      const authUser = userData.user;
+      const authUser = userData.user as any;
       const authUserId = authUser.id;
-      const authEmail = authUser.email ?? null;
+      const authEmail: string | null = authUser.email ?? null;
+      const authPhoneRaw: string | null =
+        authUser.phone ?? authUser.user_metadata?.phone ?? null;
 
       // 2) Customer profile – customers.id = auth user id
       const { data: customerRow, error: customerError } = await supabase
@@ -131,37 +145,65 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
+      let customerPhone: string | null = customerRow.phone ?? null;
+
+      // 2.1 If customers.phone is empty but auth has a phone, sync it to customers
+      if (!customerPhone && authPhoneRaw) {
+        const { error: updateError } = await supabase
+          .from('customers')
+          .update({ phone: authPhoneRaw })
+          .eq('id', authUserId);
+
+        if (updateError) {
+          console.error('Customer phone sync error:', updateError);
+        } else {
+          customerPhone = authPhoneRaw;
+        }
+      }
+
       const profileData: ProfileData = {
         id: customerRow.id as string,
         fullName: customerRow.full_name ?? '',
         email: authEmail,
-        phone: customerRow.phone ?? null,
+        phone: customerPhone,
         loyaltyPoints: customerRow.loyalty_points ?? 0,
       };
 
       setProfile(profileData);
 
-      // 3) Last 10 bookings linked by PHONE (because bookings.customer_id column does not exist)
-      let bookingsData: any[] | null = [];
-      let bookingsError: any = null;
+      // 3) All bookings linked by PHONE (can include multiple phone candidates)
+      const phoneCandidates: string[] = [];
 
-      if (customerRow.phone) {
-        const res = await supabase
-          .from('bookings')
-          .select(
-            'id, date, time, status, channel, branch_id, service_id, customer_phone',
-          )
-          .eq('customer_phone', customerRow.phone)
-          .order('date', { ascending: false })
-          .order('time', { ascending: false })
-          .limit(10);
-
-        bookingsData = res.data;
-        bookingsError = res.error;
-      } else {
-        // no phone on profile -> nothing to match
-        bookingsData = [];
+      if (customerPhone) {
+        phoneCandidates.push(customerPhone);
       }
+      if (authPhoneRaw && !phoneCandidates.includes(authPhoneRaw)) {
+        phoneCandidates.push(authPhoneRaw);
+      }
+
+      if (phoneCandidates.length === 0) {
+        setHistory([]);
+        setLoading(false);
+        return;
+      }
+
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from('bookings')
+        .select(
+          `
+          id,
+          date,
+          time,
+          status,
+          channel,
+          customer_phone,
+          branches ( name ),
+          services ( name )
+        `,
+        )
+        .in('customer_phone', phoneCandidates)
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
 
       if (bookingsError) {
         console.error('Booking history error:', bookingsError);
@@ -171,69 +213,12 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         return;
       }
 
-      const bookings = bookingsData ?? [];
+      const bookings = (bookingsData ?? []) as any[];
 
       if (bookings.length === 0) {
         setHistory([]);
         setLoading(false);
         return;
-      }
-
-      // 4) Fetch branch + service names separately
-      const branchIds = Array.from(
-        new Set(
-          bookings
-            .map((b: any) => b.branch_id)
-            .filter((id: any) => id != null),
-        ),
-      );
-      const serviceIds = Array.from(
-        new Set(
-          bookings
-            .map((b: any) => b.service_id)
-            .filter((id: any) => id != null),
-        ),
-      );
-
-      let branchMap: Record<number, string> = {};
-      let serviceMap: Record<number, string> = {};
-
-      if (branchIds.length > 0) {
-        const { data: branchRows, error: branchError } = await supabase
-          .from('branches')
-          .select('id, name')
-          .in('id', branchIds);
-
-        if (branchError) {
-          console.error('Branches fetch error:', branchError);
-        } else {
-          branchMap = (branchRows ?? []).reduce(
-            (acc: Record<number, string>, row: any) => {
-              acc[row.id] = row.name ?? '';
-              return acc;
-            },
-            {},
-          );
-        }
-      }
-
-      if (serviceIds.length > 0) {
-        const { data: serviceRows, error: serviceError } = await supabase
-          .from('services')
-          .select('id, name')
-          .in('id', serviceIds);
-
-        if (serviceError) {
-          console.error('Services fetch error:', serviceError);
-        } else {
-          serviceMap = (serviceRows ?? []).reduce(
-            (acc: Record<number, string>, row: any) => {
-              acc[row.id] = row.name ?? '';
-              return acc;
-            },
-            {},
-          );
-        }
       }
 
       const mappedHistory: BookingHistoryItem[] = bookings.map((b: any) => ({
@@ -242,8 +227,8 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         time: b.time ?? null,
         status: b.status,
         channel: b.channel ?? null,
-        branchName: branchMap[b.branch_id] || '',
-        serviceName: serviceMap[b.service_id] || '',
+        branchName: b.branches?.name ?? '',
+        serviceName: b.services?.name ?? '',
       }));
 
       setHistory(mappedHistory);
@@ -259,6 +244,19 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
     setHistory([]);
     onLoggedOut?.();
     onClose();
+  };
+
+  const handleOpenPwDrawer = () => {
+    setPwError(null);
+    setPwSuccess(null);
+    setNewPassword('');
+    setNewPassword2('');
+    setPwDrawerOpen(true);
+  };
+
+  const handleClosePwDrawer = () => {
+    if (pwSaving) return; // avoid closing while saving
+    setPwDrawerOpen(false);
   };
 
   const handleChangePassword = async () => {
@@ -288,6 +286,11 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         setPwSuccess('Нууц үг амжилттай солигдлоо.');
         setNewPassword('');
         setNewPassword2('');
+
+        // Close bottom drawer after success (optional slight delay)
+        setTimeout(() => {
+          setPwDrawerOpen(false);
+        }, 400);
       }
     } finally {
       setPwSaving(false);
@@ -295,159 +298,239 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   };
 
   return (
-    <Drawer
-      anchor="right"
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          width: { xs: '100%', sm: 380 },
-          borderRadius: { xs: 0, sm: '16px 0 0 16px' },
-        },
-      }}
-    >
-      {/* Header */}
-      <Box sx={{ p: 2 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Миний профайл
-          </Typography>
-          <IconButton onClick={onClose}>
-            <CloseIcon />
-          </IconButton>
-        </Stack>
-      </Box>
-      <Divider />
-
-      {/* Profile summary */}
-      <Box sx={{ p: 2 }}>
-        {profile ? (
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {profile.fullName || 'Нэргүй хэрэглэгч'}
+    <>
+      {/* MAIN PROFILE DRAWER (right) */}
+      <Drawer
+        anchor="right"
+        open={open}
+        onClose={onClose}
+        PaperProps={{
+          sx: {
+            width: { xs: '100%', sm: 380 },
+            borderRadius: { xs: 0, sm: '16px 0 0 16px' },
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
+      >
+        {/* Header */}
+        <Box sx={{ p: 2 }}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Миний профайл
             </Typography>
-            {profile.email && (
-              <Typography variant="body2" color="text.secondary">
-                {profile.email}
-              </Typography>
-            )}
-            {profile.phone && (
-              <Typography variant="body2" color="text.secondary">
-                Утас: {profile.phone}
-              </Typography>
-            )}
-
-            <Box sx={{ mt: 1 }}>
-              <Chip
-                icon={<StarIcon />}
-                label={`Loyalty: ${profile.loyaltyPoints.toLocaleString(
-                  'en-US',
-                )} оноо`}
-                color="primary"
-                variant="outlined"
-              />
-            </Box>
+            <IconButton onClick={onClose}>
+              <CloseIcon />
+            </IconButton>
           </Stack>
-        ) : (
-          <Typography variant="body2" color="text.secondary">
-            Нэвтрээгүй байна. Нэвтэрч дахин оролдоно уу.
-          </Typography>
-        )}
+        </Box>
+        <Divider />
 
-        {errorMsg && (
-          <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-            {errorMsg}
-          </Typography>
-        )}
-      </Box>
+        {/* Profile summary */}
+        <Box sx={{ p: 2 }}>
+          {profile ? (
+            <Stack spacing={0.5}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                {profile.fullName || 'Нэргүй хэрэглэгч'}
+              </Typography>
+              {profile.email && (
+                <Typography variant="body2" color="text.secondary">
+                  {profile.email}
+                </Typography>
+              )}
+              {profile.phone && (
+                <Typography variant="body2" color="text.secondary">
+                  Утас: {profile.phone}
+                </Typography>
+              )}
 
-      <Divider />
-
-      {/* Booking history */}
-      <Box sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
-        <Stack spacing={2}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <HistoryIcon fontSize="small" color="action" />
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Захиалгын түүх
-            </Typography>
-          </Stack>
-
-          {loading && (
+              <Box sx={{ mt: 1 }}>
+                <Chip
+                  icon={<StarIcon />}
+                  label={`Loyalty: ${profile.loyaltyPoints.toLocaleString(
+                    'en-US',
+                  )} оноо`}
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
+            </Stack>
+          ) : (
             <Typography variant="body2" color="text.secondary">
-              Түүхийг уншиж байна...
+              Нэвтрээгүй байна. дахин оролдоно уу.
             </Typography>
           )}
 
-          {!loading && history.length === 0 && (
-            <Typography variant="body2" color="text.secondary">
-              Одоогоор захиалга байхгүй байна.
+          {errorMsg && (
+            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+              {errorMsg}
             </Typography>
           )}
+        </Box>
 
-          {!loading && history.length > 0 && (
-            <List dense sx={{ px: 0 }}>
-              {history.map((b) => (
-                <ListItem
-                  key={b.id}
-                  sx={{ alignItems: 'flex-start', px: 0, py: 0.5 }}
-                >
-                  <ListItemText
-                    primary={
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        spacing={1}
-                      >
-                        <Box>
-                          <Typography variant="body2">
-                            {b.date}{' '}
-                            {b.time ? b.time.toString().slice(0, 5) : ''}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {b.branchName || 'Салбар'} •{' '}
-                            {b.serviceName || 'Үйлчилгээ'}
-                          </Typography>
-                        </Box>
-                        <Stack spacing={0.5} alignItems="flex-end">
-                          {b.channel && (
+        <Divider />
+
+        {/* Booking history */}
+        <Box sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
+          <Stack spacing={2}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <HistoryIcon fontSize="small" color="action" />
+              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                Захиалгын түүх
+              </Typography>
+            </Stack>
+
+            {loading && (
+              <Typography variant="body2" color="text.secondary">
+                Түүхийг уншиж байна...
+              </Typography>
+            )}
+
+            {!loading && history.length === 0 && !errorMsg && (
+              <Typography variant="body2" color="text.secondary">
+                Одоогоор захиалга байхгүй байна.
+              </Typography>
+            )}
+
+            {!loading && history.length > 0 && (
+              <List dense sx={{ px: 0 }}>
+                {history.map((b) => (
+                  <ListItem
+                    key={b.id}
+                    sx={{ alignItems: 'flex-start', px: 0, py: 0.5 }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Stack
+                          direction="row"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          spacing={1}
+                        >
+                          <Box>
+                            <Typography variant="body2">
+                              {b.date}{' '}
+                              {b.time ? b.time.toString().slice(0, 5) : ''}
+                            </Typography>
                             <Typography
                               variant="caption"
                               color="text.secondary"
                             >
-                              {channelLabel[b.channel] || b.channel}
+                              {b.branchName || 'Салбар'} •{' '}
+                              {b.serviceName || 'Үйлчилгээ'}
                             </Typography>
-                          )}
-                          <Chip
-                            size="small"
-                            label={statusLabel[b.status] || b.status}
-                            color={statusColor(b.status)}
-                            sx={{ fontSize: 11 }}
-                          />
+                          </Box>
+                          <Stack spacing={0.5} alignItems="flex-end">
+                            {b.channel && (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                {channelLabel[b.channel] || b.channel}
+                              </Typography>
+                            )}
+                            <Chip
+                              size="small"
+                              label={statusLabel[b.status] || b.status}
+                              color={statusColor(b.status)}
+                              sx={{ fontSize: 11 }}
+                            />
+                          </Stack>
                         </Stack>
-                      </Stack>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          )}
-        </Stack>
-      </Box>
+                      }
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Stack>
+        </Box>
 
-      <Divider />
+        <Divider />
 
-      {/* Change password */}
-      <Box sx={{ p: 2 }}>
-        <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-          <LockResetIcon fontSize="small" color="action" />
-          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            Нууц үг солих
+        {/* Change password – compact section, open bottom drawer */}
+        <Box sx={{ p: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+            <LockResetIcon fontSize="small" color="action" />
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              Нууц үг
+            </Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            Нууц үгээ өөрчлөхийн тулд доорх товчийг дарж баталгаажуулна уу.
           </Typography>
-        </Stack>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<LockResetIcon />}
+            sx={{
+              textTransform: 'none',
+              borderRadius: 999,
+            }}
+            onClick={handleOpenPwDrawer}
+          >
+            Нууц үг солих
+          </Button>
+        </Box>
 
-        <Stack spacing={1.5}>
+        <Divider />
+
+        {/* Logout */}
+        <Box sx={{ p: 2 }}>
+          <Button
+            fullWidth
+            variant="contained"
+            color="primary"
+            startIcon={<LogoutIcon />}
+            sx={{ textTransform: 'none', borderRadius: 999 }}
+            onClick={handleLogout}
+          >
+            Гарах
+          </Button>
+        </Box>
+      </Drawer>
+
+      {/* PASSWORD BOTTOM SHEET DRAWER */}
+      <Drawer
+        anchor="bottom"
+        open={pwDrawerOpen}
+        onClose={handleClosePwDrawer}
+        PaperProps={{
+          sx: {
+            borderRadius: '16px 16px 0 0',
+            maxWidth: 480,
+            mx: 'auto',
+            width: '100%',
+            p: 2.5,
+          },
+        }}
+      >
+        <Stack spacing={2}>
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Stack spacing={0.5}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <LockResetIcon fontSize="small" color="action" />
+                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                  Нууц үг солих
+                </Typography>
+              </Stack>
+              <Typography variant="body2" color="text.secondary">
+                Шинэ нууц үгээ оруулж баталгаажуулна уу.
+              </Typography>
+            </Stack>
+            <IconButton size="small" onClick={handleClosePwDrawer}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          </Stack>
+
           <TextField
             label="Шинэ нууц үг"
             type="password"
@@ -477,34 +560,18 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
           )}
 
           <Button
-            variant="outlined"
-            size="small"
+            variant="contained"
+            color="primary"
             startIcon={<LockResetIcon />}
-            sx={{ textTransform: 'none', alignSelf: 'flex-start' }}
+            sx={{ textTransform: 'none', borderRadius: 999, mt: 0.5 }}
             onClick={handleChangePassword}
             disabled={pwSaving}
           >
-            {pwSaving ? 'Хадгаж байна…' : 'Нууц үг солих'}
+            {pwSaving ? 'Хадгаж байна…' : 'Нууц үг шинэчлэх'}
           </Button>
         </Stack>
-      </Box>
-
-      <Divider />
-
-      {/* Logout */}
-      <Box sx={{ p: 2 }}>
-        <Button
-          fullWidth
-          variant="contained"
-          color="primary"
-          startIcon={<LogoutIcon />}
-          sx={{ textTransform: 'none', borderRadius: 999 }}
-          onClick={handleLogout}
-        >
-          Гарах
-        </Button>
-      </Box>
-    </Drawer>
+      </Drawer>
+    </>
   );
 };
 
