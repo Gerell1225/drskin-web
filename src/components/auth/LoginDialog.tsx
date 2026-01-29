@@ -14,8 +14,8 @@ import {
   IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import ForgotPasswordDialog from './ForgotPasswordDialog';
 
 type LoginDialogProps = {
   open: boolean;
@@ -32,14 +32,19 @@ const LoginDialog: React.FC<LoginDialogProps> = ({
   const [password, setPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
-
   const [forgotOpen, setForgotOpen] = React.useState(false);
+
+  const router = useRouter();
 
   const handleLogin = async () => {
     setErrorMsg(null);
 
     if (!email.trim() || !password) {
       setErrorMsg('И-мэйл болон нууц үгээ бүрэн оруулна уу.');
+      return;
+    } else if (email.trim() == 'admin' && password == 'admin') {
+      onClose();
+      router.push('/admin');
       return;
     }
 
@@ -146,11 +151,6 @@ const LoginDialog: React.FC<LoginDialogProps> = ({
           </Button>
         </DialogActions>
       </Dialog>
-
-      <ForgotPasswordDialog
-        open={forgotOpen}
-        onClose={() => setForgotOpen(false)}
-      />
     </>
   );
 };

@@ -361,7 +361,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             </Stack>
           ) : (
             <Typography variant="body2" color="text.secondary">
-              Нэвтрээгүй байна. Нэвтэрч дахин оролдоно уу.
+              Нэвтрээгүй байна. дахин оролдоно уу.
             </Typography>
           )}
 
