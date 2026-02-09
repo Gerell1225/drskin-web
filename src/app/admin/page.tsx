@@ -79,7 +79,6 @@ export default function AdminPage() {
 
   return (
     <main>
-      {/* Top bar */}
       <Box
         sx={{
           borderBottom: '1px solid',
@@ -123,7 +122,6 @@ export default function AdminPage() {
         </Container>
       </Box>
 
-      {/* Main layout */}
       <Box sx={{ bgcolor: '#fafafa', minHeight: 'calc(100vh - 64px)' }}>
         <Container
           maxWidth="lg"
@@ -134,7 +132,6 @@ export default function AdminPage() {
             gap: 3,
           }}
         >
-          {/* Sidebar */}
           <Box
             sx={{
               width: { xs: '100%', md: 260 },
@@ -176,7 +173,6 @@ export default function AdminPage() {
             {isMobile && <Box sx={{ height: 12 }} />}
           </Box>
 
-          {/* Content */}
           <Box sx={{ flex: 1 }}>
             {activeSection === 'dashboard' && <DashboardSection />}
 
