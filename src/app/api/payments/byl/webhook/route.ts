@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 const json = (payload: any, status = 200) => NextResponse.json(payload, { status });
 
@@ -15,13 +15,15 @@ const safeEqual = (a: string, b: string) => {
 };
 
 export async function POST(req: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
+
   const signature = req.headers.get('Byl-Signature') || '';
   const payload = await req.text();
 
-  const computed = crypto
-    .createHmac('sha256', process.env.BYL_WEBHOOK_SECRET!)
-    .update(payload)
-    .digest('hex');
+  const secret = process.env.BYL_WEBHOOK_SECRET;
+  if (!secret) return json({ error: 'SERVER_ENV_MISSING' }, 500);
+
+  const computed = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
   if (!signature || !safeEqual(signature, computed)) {
     return json({ error: 'INVALID_SIGNATURE' }, 401);
@@ -46,12 +48,14 @@ export async function POST(req: Request) {
   const checkoutStatus = checkout?.status ? String(checkout.status) : 'complete';
   const paymentMethod = checkout?.payment_method ? String(checkout.payment_method) : null;
   const clientRef = checkout?.client_reference_id ? String(checkout.client_reference_id) : null;
-
   const bookingId = clientRef ? Number(clientRef) : null;
 
   if (!Number.isFinite(checkoutId) || !bookingId || !Number.isFinite(bookingId)) {
     return json({ error: 'MISSING_IDS' }, 400);
   }
+
+  const amountFromEvent =
+    Number(checkout?.amount_total ?? checkout?.amount ?? 0) || 0;
 
   const upsertRes = await supabaseAdmin.from('payments').upsert(
     {
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
       last_event_type: type ?? null,
       raw_event: evt,
       currency: 'MNT',
-      amount: Number(checkout?.amount_total ?? 0) || 0,
+      amount: amountFromEvent,
       checkout_url: checkout?.url ? String(checkout.url) : null,
     },
     { onConflict: 'provider,provider_object,provider_object_id' },

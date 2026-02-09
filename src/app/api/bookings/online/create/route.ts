@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 type Body = {
   date: string;
@@ -18,15 +18,17 @@ type Body = {
 const json = (payload: any, status = 200) => NextResponse.json(payload, { status });
 
 export async function POST(req: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
+
   const authHeader = req.headers.get('authorization') || '';
   const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!jwt) return json({ error: 'UNAUTHORIZED' }, 401);
 
-  const supabaseAnon = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!url || !anonKey) return json({ error: 'SERVER_ENV_MISSING' }, 500);
+
+  const supabaseAnon = createClient(url, anonKey, { auth: { persistSession: false } });
 
   const { data: userRes, error: userErr } = await supabaseAnon.auth.getUser(jwt);
   if (userErr || !userRes.user) return json({ error: 'UNAUTHORIZED' }, 401);
@@ -161,7 +163,7 @@ export async function POST(req: Request) {
   const checkoutId = Number(checkoutJson.data.id);
   const checkoutUrl = String(checkoutJson.data.url);
 
-  const { error: payErr } = await supabaseAdmin.from('payments').insert({
+  await supabaseAdmin.from('payments').insert({
     booking_id: bookingId,
     provider: 'byl',
     provider_object: 'checkout',
@@ -171,8 +173,6 @@ export async function POST(req: Request) {
     currency: 'MNT',
     checkout_url: checkoutUrl,
   });
-
-  if (payErr) return json({ error: 'PAYMENT_SAVE_FAILED', detail: payErr.message }, 500);
 
   return json({ bookingId, checkoutUrl });
 }

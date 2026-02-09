@@ -3,20 +3,22 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 const json = (payload: any, status = 200) => NextResponse.json(payload, { status });
 
 export async function POST(req: Request) {
+  const supabaseAdmin = getSupabaseAdmin();
+
   const authHeader = req.headers.get('authorization') || '';
   const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
   if (!jwt) return json({ error: 'UNAUTHORIZED' }, 401);
 
-  const supabaseAnon = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  if (!url || !anonKey) return json({ error: 'SERVER_ENV_MISSING' }, 500);
+
+  const supabaseAnon = createClient(url, anonKey, { auth: { persistSession: false } });
 
   const { data: userRes, error: userErr } = await supabaseAnon.auth.getUser(jwt);
   if (userErr || !userRes.user) return json({ error: 'UNAUTHORIZED' }, 401);
@@ -37,8 +39,17 @@ export async function POST(req: Request) {
   const amount = Number(booking.total_amount ?? 0);
   if (!Number.isFinite(amount) || amount <= 0) return json({ error: 'INVALID_AMOUNT' }, 400);
 
-  const { data: branch } = await supabaseAdmin.from('branches').select('name').eq('id', booking.branch_id).single();
-  const { data: service } = await supabaseAdmin.from('services').select('name').eq('id', booking.service_id).single();
+  const { data: branch } = await supabaseAdmin
+    .from('branches')
+    .select('name')
+    .eq('id', booking.branch_id)
+    .single();
+
+  const { data: service } = await supabaseAdmin
+    .from('services')
+    .select('name')
+    .eq('id', booking.service_id)
+    .single();
 
   const checkoutRes = await fetch(
     `https://byl.mn/api/v1/projects/${process.env.BYL_PROJECT_ID!}/checkouts`,
@@ -76,18 +87,16 @@ export async function POST(req: Request) {
   const checkoutId = Number(checkoutJson.data.id);
   const checkoutUrl = String(checkoutJson.data.url);
 
-  await supabaseAdmin
-    .from('payments')
-    .insert({
-      booking_id: booking.id,
-      provider: 'byl',
-      provider_object: 'checkout',
-      provider_object_id: checkoutId,
-      status: 'open',
-      amount,
-      currency: 'MNT',
-      checkout_url: checkoutUrl,
-    });
+  await supabaseAdmin.from('payments').insert({
+    booking_id: booking.id,
+    provider: 'byl',
+    provider_object: 'checkout',
+    provider_object_id: checkoutId,
+    status: 'open',
+    amount,
+    currency: 'MNT',
+    checkout_url: checkoutUrl,
+  });
 
   return json({ checkoutUrl });
 }
