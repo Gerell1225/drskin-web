@@ -68,7 +68,7 @@ const BranchesSection: React.FC = () => {
               Манай салбарууд
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Хотын гол бүсүүдэд байрлах Dr.Skin &amp; Dr.Hair салбаруудаа
+              Хотын гол бүсүүдэд байрлах Dr.Skin &amp; Dr.Hair салбаруудаас
               сонгон үйлчлүүлээрэй.
             </Typography>
           </Box>
