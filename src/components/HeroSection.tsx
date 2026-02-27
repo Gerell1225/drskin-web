@@ -69,6 +69,7 @@ const HeroSection: React.FC = () => {
                 color="primary"
                 size="large"
                 sx={{ borderRadius: 999, textTransform: 'none', px: 4 }}
+                onClick={() => scrollToId('online-booking')}
               >
                 Цаг авах
               </Button>

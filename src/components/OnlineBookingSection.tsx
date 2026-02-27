@@ -537,7 +537,7 @@ const OnlineBookingSection: React.FC = () => {
           </Box>
 
           <Box sx={{ flex: 1, maxWidth: 480, width: '100%' }}>
-            <Card sx={{ borderRadius: 4, boxShadow: 4, position: 'relative', overflow: 'hidden' }}>
+            <Card sx={{ borderRadius: 3, boxShadow: 4, position: 'relative', overflow: 'hidden' }}>
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
                   Онлайн захиалгын мэдээлэл
