@@ -149,7 +149,6 @@ export async function POST(req: Request) {
 
     let bookingId: number | null = null;
 
-    // Try preferred values first
     {
       const { data, error } = await supabaseAdmin
         .from('bookings')
@@ -164,7 +163,6 @@ export async function POST(req: Request) {
 
       if (!error && data?.id != null) bookingId = Number(data.id);
 
-      // If enum mismatch etc, fallback
       if (!bookingId && error) {
         const msg = error.message || '';
         const looksEnum = msg.includes('enum') || msg.includes('invalid input value');
@@ -175,7 +173,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Fallback insert (uses DB defaults for enums)
     if (!bookingId) {
       const { data, error } = await supabaseAdmin
         .from('bookings')
@@ -222,7 +219,6 @@ export async function POST(req: Request) {
     const checkoutJson = await checkoutRes.json().catch(() => null);
 
     if (!checkoutRes.ok || !checkoutJson?.data?.id || !checkoutJson?.data?.url) {
-      // Don’t crash silently — return Byl response so you can see it in Network tab
       return json({ error: 'BYL_CREATE_FAILED', detail: checkoutJson }, 500);
     }
 
@@ -242,7 +238,6 @@ export async function POST(req: Request) {
 
     return json({ bookingId, checkoutUrl });
   } catch (e: any) {
-    // Always return JSON (never HTML) so your client won’t throw “Unexpected token <”
     return json(
       {
         error: 'INTERNAL_ERROR',
