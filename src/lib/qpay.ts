@@ -70,30 +70,35 @@ type QPayPaymentResponse = {
   object_id?: string;
 };
 
-const baseUrl = process.env.QPAY_BASE_URL!;
-const clientId = process.env.QPAY_CLIENT_ID!;
-const clientSecret = process.env.QPAY_CLIENT_SECRET!;
-const invoiceCode = process.env.QPAY_INVOICE_CODE!;
-
-if (!baseUrl || !clientId || !clientSecret || !invoiceCode) {
-  throw new Error('Missing QPay environment variables');
-}
-
 let cachedAccessToken: string | null = null;
 let cachedTokenExpiresAt = 0;
 
+function getQPayEnv() {
+  const baseUrl = process.env.QPAY_BASE_URL;
+  const clientId = process.env.QPAY_CLIENT_ID;
+  const clientSecret = process.env.QPAY_CLIENT_SECRET;
+  const invoiceCode = process.env.QPAY_INVOICE_CODE;
+
+  if (!baseUrl) throw new Error('Missing QPAY_BASE_URL');
+  if (!clientId) throw new Error('Missing QPAY_CLIENT_ID');
+  if (!clientSecret) throw new Error('Missing QPAY_CLIENT_SECRET');
+  if (!invoiceCode) throw new Error('Missing QPAY_INVOICE_CODE');
+
+  return { baseUrl, clientId, clientSecret, invoiceCode };
+}
+
 function getBasicAuthHeader() {
-  return (
-    'Basic ' +
-    Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-  );
+  const { clientId, clientSecret } = getQPayEnv();
+  return 'Basic ' + Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 }
 
 export function getQPayInvoiceCode() {
+  const { invoiceCode } = getQPayEnv();
   return invoiceCode;
 }
 
 export async function getQPayAccessToken() {
+  const { baseUrl } = getQPayEnv();
   const now = Date.now();
 
   if (cachedAccessToken && now < cachedTokenExpiresAt) {
@@ -123,12 +128,14 @@ export async function getQPayAccessToken() {
   cachedAccessToken = data.access_token;
 
   const expiresInSeconds = Number(data.expires_in || 3600);
-  cachedTokenExpiresAt = Date.now() + Math.max(60_000, (expiresInSeconds - 120) * 1000);
+  cachedTokenExpiresAt =
+    Date.now() + Math.max(60_000, (expiresInSeconds - 120) * 1000);
 
   return cachedAccessToken;
 }
 
 export async function createQPayInvoice(payload: QPayCreateInvoicePayload) {
+  const { baseUrl } = getQPayEnv();
   const accessToken = await getQPayAccessToken();
 
   const res = await fetch(`${baseUrl}/v2/invoice`, {
@@ -151,6 +158,7 @@ export async function createQPayInvoice(payload: QPayCreateInvoicePayload) {
 }
 
 export async function checkQPayInvoice(invoiceId: string) {
+  const { baseUrl } = getQPayEnv();
   const accessToken = await getQPayAccessToken();
 
   const res = await fetch(`${baseUrl}/v2/payment/check`, {
@@ -180,6 +188,7 @@ export async function checkQPayInvoice(invoiceId: string) {
 }
 
 export async function getQPayPayment(paymentId: string) {
+  const { baseUrl } = getQPayEnv();
   const accessToken = await getQPayAccessToken();
 
   const res = await fetch(`${baseUrl}/v2/payment/${paymentId}`, {
