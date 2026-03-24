@@ -1,178 +1,359 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import {
+  buildInvoiceReceiverCode,
+  buildQPayCallbackUrl,
+  generateSenderInvoiceNo,
+  hhmmToMinutes,
+  isValidTimeSlot,
+  normalizeAmount,
+  normalizePeopleCount,
+} from '@/lib/paymentHelpers';
+import { createQPayInvoice, getQPayInvoiceCode } from '@/lib/qpay';
 
-import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-
-type Body = {
-  date: string;
-  time: string;
-  branchId: number;
-  serviceId: number;
-  peopleCount: number;
-  customerName: string;
-  customerPhone: string;
+type BranchRow = {
+  id: number;
+  name: string | null;
+  capacity_skin: number | null;
+  capacity_hair: number | null;
 };
 
-const json = (payload: any, status = 200) => NextResponse.json(payload, { status });
+type ServiceRow = {
+  id: number;
+  name: string | null;
+  category: 'skin' | 'hair' | null;
+  is_active: boolean | null;
+};
 
-export async function POST(req: Request) {
-  const supabaseAdmin = getSupabaseAdmin();
+type ServiceBranchPriceRow = {
+  id?: number;
+  branch_id: number;
+  service_id?: number;
+  enabled: boolean | null;
+  price: number | null;
+};
 
-  const authHeader = req.headers.get('authorization') || '';
-  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!jwt) return json({ error: 'UNAUTHORIZED' }, 401);
+function jsonError(
+  message: string,
+  status = 400,
+  extra?: Record<string, unknown>,
+) {
+  return NextResponse.json(
+    {
+      success: false,
+      message,
+      ...extra,
+    },
+    { status },
+  );
+}
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  if (!url || !anonKey) return json({ error: 'SERVER_ENV_MISSING' }, 500);
-
-  const supabaseAnon = createClient(url, anonKey, { auth: { persistSession: false } });
-
-  const { data: userRes, error: userErr } = await supabaseAnon.auth.getUser(jwt);
-  if (userErr || !userRes.user) return json({ error: 'UNAUTHORIZED' }, 401);
-
-  let body: Body;
+export async function POST(req: NextRequest) {
   try {
-    body = (await req.json()) as Body;
-  } catch {
-    return json({ error: 'BAD_REQUEST', message: 'Invalid JSON' }, 400);
-  }
+    const authHeader = req.headers.get('authorization');
+    const accessToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : null;
 
-  const { date, time, branchId, serviceId, peopleCount, customerName, customerPhone } = body;
+    if (!accessToken) {
+      return jsonError('Unauthorized', 401);
+    }
 
-  if (!date || !time) return json({ error: 'BAD_REQUEST', message: 'date/time required' }, 400);
-  if (!branchId || !serviceId) return json({ error: 'BAD_REQUEST', message: 'branchId/serviceId required' }, 400);
-  if (!Number.isFinite(peopleCount) || peopleCount < 1 || peopleCount > 6)
-    return json({ error: 'BAD_REQUEST', message: 'peopleCount invalid' }, 400);
-  if (!customerName?.trim() || !customerPhone?.trim())
-    return json({ error: 'BAD_REQUEST', message: 'customerName/customerPhone required' }, 400);
+    const {
+      data: authData,
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(accessToken);
 
-  const { data: branch, error: branchErr } = await supabaseAdmin
-    .from('branches')
-    .select('id, name, capacity_skin, capacity_hair')
-    .eq('id', branchId)
-    .single();
+    if (authError || !authData.user) {
+      return jsonError('Unauthorized', 401);
+    }
 
-  if (branchErr || !branch) return json({ error: 'BRANCH_NOT_FOUND' }, 404);
+    const authUser = authData.user;
 
-  const { data: service, error: serviceErr } = await supabaseAdmin
-    .from('services')
-    .select('id, name, category, is_active')
-    .eq('id', serviceId)
-    .single();
+    const body = await req.json();
 
-  if (serviceErr || !service) return json({ error: 'SERVICE_NOT_FOUND' }, 404);
-  if (!service.is_active) return json({ error: 'SERVICE_INACTIVE' }, 400);
+    const date = String(body.date || '').trim();
+    const time = String(body.time || '').trim();
+    const branchId = Number(body.branchId);
+    const serviceId = Number(body.serviceId);
+    const peopleCount = normalizePeopleCount(body.peopleCount);
+    const customerName = String(body.customerName || '').trim();
+    const customerPhone = String(body.customerPhone || '').trim();
 
-  const { data: priceRow, error: priceErr } = await supabaseAdmin
-    .from('service_branch_prices')
-    .select('price, enabled')
-    .eq('service_id', serviceId)
-    .eq('branch_id', branchId)
-    .single();
+    if (!date || !time || !branchId || !serviceId) {
+      return jsonError('Мэдээллээ бүрэн оруулна уу.');
+    }
 
-  if (priceErr || !priceRow || !priceRow.enabled) return json({ error: 'PRICE_NOT_FOUND' }, 400);
+    if (!customerName || !customerPhone) {
+      return jsonError('Хэрэглэгчийн нэр, утас шаардлагатай.');
+    }
 
-  const unitAmount = Number(priceRow.price);
-  if (!Number.isFinite(unitAmount) || unitAmount <= 0) return json({ error: 'INVALID_PRICE' }, 400);
+    if (!isValidTimeSlot(time)) {
+      return jsonError('Сонгосон цаг буруу байна.');
+    }
 
-  const category = (service.category ?? 'skin') as 'skin' | 'hair';
-  const capacity =
-    category === 'skin' ? Number(branch.capacity_skin ?? 0) : Number(branch.capacity_hair ?? 0);
+    const today = new Date().toISOString().slice(0, 10);
+    if (date < today) {
+      return jsonError('Өнгөрсөн өдөр сонгох боломжгүй.');
+    }
 
-  if (!Number.isFinite(capacity) || capacity <= 0) return json({ error: 'CAPACITY_ZERO' }, 400);
+    if (date === today) {
+      const now = new Date();
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+      if (hhmmToMinutes(time) <= nowMinutes) {
+        return jsonError('Өнгөрсөн цаг сонгох боломжгүй.');
+      }
+    }
 
-  const { data: existing, error: exErr } = await supabaseAdmin
-    .from('bookings')
-    .select('people_count, service:services(category)')
-    .eq('branch_id', branchId)
-    .eq('date', date)
-    .eq('time', time)
-    .neq('status', 'cancelled');
+    const [
+      customerRes,
+      branchRes,
+      serviceRes,
+      priceRes,
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('customers')
+        .select('id, full_name, phone')
+        .eq('id', authUser.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('branches')
+        .select('id, name, capacity_skin, capacity_hair')
+        .eq('id', branchId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('services')
+        .select('id, name, category, is_active')
+        .eq('id', serviceId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('service_branch_prices')
+        .select('branch_id, service_id, enabled, price')
+        .eq('branch_id', branchId)
+        .eq('service_id', serviceId)
+        .maybeSingle(),
+    ]);
 
-  if (exErr) return json({ error: 'CAPACITY_CHECK_FAILED' }, 500);
+    if (customerRes.error || !customerRes.data) {
+      return jsonError('Хэрэглэгчийн мэдээлэл олдсонгүй.', 404);
+    }
 
-  const currentLoad =
-    (existing ?? [])
-      .filter((r: any) => (r?.service?.category ?? 'skin') === category)
-      .reduce((sum: number, r: any) => sum + (r.people_count != null ? Number(r.people_count) : 1), 0) || 0;
+    if (branchRes.error || !branchRes.data) {
+      return jsonError('Салбар олдсонгүй.', 404);
+    }
 
-  if (currentLoad + peopleCount > capacity) return json({ error: 'CAPACITY_FULL' }, 409);
+    if (serviceRes.error || !serviceRes.data) {
+      return jsonError('Үйлчилгээ олдсонгүй.', 404);
+    }
 
-  const totalAmount = unitAmount * peopleCount;
+    if (priceRes.error || !priceRes.data) {
+      return jsonError('Энэ салбар дээр үйлчилгээ идэвхгүй байна.', 400);
+    }
 
-  const { data: booking, error: insErr } = await supabaseAdmin
-    .from('bookings')
-    .insert({
-      date,
-      time,
+    const customer = customerRes.data;
+    const branch = branchRes.data as BranchRow;
+    const service = serviceRes.data as ServiceRow;
+    const priceRow = priceRes.data as ServiceBranchPriceRow;
+
+    if (!service.is_active) {
+      return jsonError('Үйлчилгээ идэвхгүй байна.');
+    }
+
+    if (!priceRow.enabled) {
+      return jsonError('Энэ салбар дээр үйлчилгээ идэвхгүй байна.');
+    }
+
+    const category = (service.category || 'skin') as 'skin' | 'hair';
+    const capacity =
+      category === 'skin'
+        ? Number(branch.capacity_skin || 0)
+        : Number(branch.capacity_hair || 0);
+
+    if (capacity <= 0) {
+      return jsonError(
+        category === 'skin'
+          ? 'Энэ салбарт арьсны үйлчилгээ авах боломжгүй байна.'
+          : 'Энэ салбарт үсний үйлчилгээ авах боломжгүй байна.',
+      );
+    }
+
+    const unitPrice = normalizeAmount(priceRow.price || 0);
+    const totalAmount = normalizeAmount(unitPrice * peopleCount);
+
+    const { data: existingBookings, error: existingBookingsError } =
+      await supabaseAdmin
+        .from('bookings')
+        .select('id, people_count, service_id, status')
+        .eq('branch_id', branchId)
+        .eq('date', date)
+        .eq('time', time)
+        .neq('status', 'cancelled');
+
+    if (existingBookingsError) {
+      return jsonError('Ачаалал шалгахад алдаа гарлаа.', 500);
+    }
+
+    const serviceIdsForCategoryRes = await supabaseAdmin
+      .from('services')
+      .select('id, category')
+      .eq('category', category);
+
+    if (serviceIdsForCategoryRes.error) {
+      return jsonError('Үйлчилгээний мэдээлэл шалгахад алдаа гарлаа.', 500);
+    }
+
+    const categoryServiceIds = new Set(
+      (serviceIdsForCategoryRes.data || []).map((x) => Number(x.id)),
+    );
+
+    let usedCapacity = 0;
+    for (const row of existingBookings || []) {
+      if (!categoryServiceIds.has(Number(row.service_id))) continue;
+      usedCapacity += Number(row.people_count || 1);
+    }
+
+    const remaining = capacity - usedCapacity;
+    if (remaining < peopleCount) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'CAPACITY_FULL',
+          message: 'Энэ цаг дүүрсэн байна. Өөр цаг сонгоно уу.',
+        },
+        { status: 409 },
+      );
+    }
+
+    const insertBookingPayload: Record<string, unknown> = {
+      customer_id: customer.id,
       branch_id: branchId,
       service_id: serviceId,
-      customer_name: customerName.trim(),
-      customer_phone: customerPhone.trim(),
+      date,
+      time,
       people_count: peopleCount,
-      total_amount: totalAmount,
-      channel: 'online',
-      status: 'pending',
-      payment_status: 'pending',
-      customer_id: userRes.user.id,
-    })
-    .select('id')
-    .single();
+      amount: totalAmount,
+      status: 'awaiting_payment',
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      payment_provider: 'qpay',
+      payment_status: 'PENDING',
+      payment_amount: totalAmount,
+    };
 
-  if (insErr || !booking) return json({ error: 'BOOKING_CREATE_FAILED', detail: insErr?.message }, 500);
+    const { data: bookingInsert, error: bookingInsertError } =
+      await supabaseAdmin
+        .from('bookings')
+        .insert(insertBookingPayload)
+        .select('id')
+        .single();
 
-  const bookingId = booking.id as number;
+    if (bookingInsertError || !bookingInsert) {
+      return jsonError(
+        bookingInsertError?.message || 'Захиалга үүсгэхэд алдаа гарлаа.',
+        500,
+      );
+    }
 
-  const checkoutRes = await fetch(
-    `https://byl.mn/api/v1/projects/${process.env.BYL_PROJECT_ID!}/checkouts`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.BYL_TOKEN!}`,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        success_url: `${process.env.NEXT_PUBLIC_SITE_URL!}/payment/success?bookingId=${bookingId}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_SITE_URL!}/payment/cancel?bookingId=${bookingId}`,
-        client_reference_id: String(bookingId),
-        phone_number_collection: true,
-        items: [
+    const bookingId = String(bookingInsert.id);
+    const callbackUrl = buildQPayCallbackUrl();
+    const senderInvoiceNo = generateSenderInvoiceNo(bookingId);
+    const invoiceReceiverCode = buildInvoiceReceiverCode(customer.id, bookingId);
+    const invoiceDescription = `${branch.name || 'DrSkin'} - ${service.name || 'Service'} - ${date} ${time}`;
+
+    let invoice;
+    try {
+      invoice = await createQPayInvoice({
+        invoice_code: getQPayInvoiceCode(),
+        sender_invoice_no: senderInvoiceNo,
+        invoice_receiver_code: invoiceReceiverCode,
+        invoice_description: invoiceDescription,
+        sender_branch_code: String(branchId),
+        amount: totalAmount,
+        callback_url: callbackUrl,
+        allow_partial: false,
+        allow_exceed: false,
+        invoice_receiver_data: {
+          name: customerName,
+          phone: customerPhone,
+          email: authUser.email || '',
+        },
+        lines: [
           {
-            price_data: {
-              unit_amount: totalAmount,
-              product_data: { name: `${service.name} - ${branch.name}` },
-            },
-            quantity: 1,
+            line_description: service.name || 'Appointment',
+            line_quantity: String(peopleCount),
+            line_unit_price: unitPrice.toFixed(2),
+            note: `${date} ${time}`,
           },
         ],
-      }),
-    },
-  );
+      });
+    } catch (qpayError: any) {
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          status: 'payment_failed',
+          payment_status: 'FAILED',
+        })
+        .eq('id', bookingId);
 
-  const checkoutJson = await checkoutRes.json().catch(() => null);
+      return jsonError(
+        qpayError?.message || 'QPay invoice үүсгэхэд алдаа гарлаа.',
+        500,
+      );
+    }
 
-  if (!checkoutRes.ok || !checkoutJson?.data?.id || !checkoutJson?.data?.url) {
-    await supabaseAdmin.from('bookings').update({ status: 'cancelled' }).eq('id', bookingId);
-    return json({ error: 'BYL_CREATE_FAILED', detail: checkoutJson }, 500);
+    const { error: paymentInsertError } = await supabaseAdmin
+      .from('qpay_payments')
+      .insert({
+        booking_id: bookingId,
+        customer_id: customer.id,
+        provider: 'qpay',
+        status: 'INVOICE_CREATED',
+        payment_status: 'NEW',
+        sender_invoice_no: senderInvoiceNo,
+        invoice_id: invoice.invoice_id,
+        invoice_code: getQPayInvoiceCode(),
+        amount: totalAmount,
+        currency: 'MNT',
+        invoice_description: invoiceDescription,
+        callback_url: callbackUrl,
+        qr_text: invoice.qr_text ?? null,
+        qr_image: invoice.qr_image ?? null,
+        qpay_short_url: invoice.qPay_shortUrl ?? null,
+        qpay_deeplink: invoice.qPay_deeplink ?? null,
+        raw_create_response: invoice,
+      });
+
+    if (paymentInsertError) {
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          payment_status: 'FAILED',
+          status: 'payment_failed',
+        })
+        .eq('id', bookingId);
+
+      return jsonError(paymentInsertError.message, 500);
+    }
+
+    await supabaseAdmin
+      .from('bookings')
+      .update({
+        payment_invoice_id: invoice.invoice_id,
+      })
+      .eq('id', bookingId);
+
+    return NextResponse.json({
+      success: true,
+      bookingId,
+      invoiceId: invoice.invoice_id,
+      senderInvoiceNo,
+      qrText: invoice.qr_text ?? null,
+      qrImage: invoice.qr_image ?? null,
+      qPayShortUrl: invoice.qPay_shortUrl ?? null,
+      qPayDeeplink: invoice.qPay_deeplink ?? [],
+      message: 'Захиалга үүслээ. Төлбөрөө хийнэ үү.',
+    });
+  } catch (error: any) {
+    return jsonError(error?.message || 'Серверийн алдаа гарлаа.', 500);
   }
-
-  const checkoutId = Number(checkoutJson.data.id);
-  const checkoutUrl = String(checkoutJson.data.url);
-
-  await supabaseAdmin.from('payments').insert({
-    booking_id: bookingId,
-    provider: 'byl',
-    provider_object: 'checkout',
-    provider_object_id: checkoutId,
-    status: 'open',
-    amount: totalAmount,
-    currency: 'MNT',
-    checkout_url: checkoutUrl,
-  });
-
-  return json({ bookingId, checkoutUrl });
 }
