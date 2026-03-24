@@ -225,19 +225,18 @@ export async function POST(req: NextRequest) {
     }
 
     const insertBookingPayload: Record<string, unknown> = {
-      customer_id: customer.id,
-      branch_id: branchId,
-      service_id: serviceId,
-      date,
-      time,
-      people_count: peopleCount,
-      amount: totalAmount,
-      status: 'awaiting_payment',
-      customer_name: customerName,
-      customer_phone: customerPhone,
-      payment_provider: 'qpay',
-      payment_status: 'PENDING',
-      payment_amount: totalAmount,
+    customer_id: customer.id,
+    branch_id: branchId,
+    service_id: serviceId,
+    date,
+    time,
+    people_count: peopleCount,
+    status: 'awaiting_payment',
+    customer_name: customerName,
+    customer_phone: customerPhone,
+    payment_provider: 'qpay',
+    payment_status: 'PENDING',
+    payment_amount: totalAmount,
     };
 
     const { data: bookingInsert, error: bookingInsertError } =
