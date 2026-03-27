@@ -83,7 +83,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   const [loading, setLoading] = React.useState(false);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
-  // change password state
   const [newPassword, setNewPassword] = React.useState('');
   const [newPassword2, setNewPassword2] = React.useState('');
   const [pwError, setPwError] = React.useState<string | null>(null);
@@ -91,7 +90,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   const [pwSaving, setPwSaving] = React.useState(false);
   const [pwDrawerOpen, setPwDrawerOpen] = React.useState(false);
 
-  // Close password drawer when profile drawer closes
   React.useEffect(() => {
     if (!open) {
       setPwDrawerOpen(false);
@@ -102,7 +100,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
     }
   }, [open]);
 
-  // Load profile + history when drawer opens
   React.useEffect(() => {
     if (!open) return;
 
@@ -110,7 +107,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      // 1) Auth user
       const { data: userData, error: userError } =
         await supabase.auth.getUser();
 
@@ -129,7 +125,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       const authPhoneRaw: string | null =
         authUser.phone ?? authUser.user_metadata?.phone ?? null;
 
-      // 2) Customer profile – customers.id = auth user id
       const { data: customerRow, error: customerError } = await supabase
         .from('customers')
         .select('id, full_name, phone, loyalty_points')
@@ -147,7 +142,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
       let customerPhone: string | null = customerRow.phone ?? null;
 
-      // 2.1 If customers.phone is empty but auth has a phone, sync it to customers
       if (!customerPhone && authPhoneRaw) {
         const { error: updateError } = await supabase
           .from('customers')
@@ -171,7 +165,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
       setProfile(profileData);
 
-      // 3) All bookings linked by PHONE (can include multiple phone candidates)
       const phoneCandidates: string[] = [];
 
       if (customerPhone) {
@@ -255,7 +248,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   };
 
   const handleClosePwDrawer = () => {
-    if (pwSaving) return; // avoid closing while saving
+    if (pwSaving) return;
     setPwDrawerOpen(false);
   };
 
@@ -287,7 +280,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         setNewPassword('');
         setNewPassword2('');
 
-        // Close bottom drawer after success (optional slight delay)
         setTimeout(() => {
           setPwDrawerOpen(false);
         }, 400);
@@ -299,7 +291,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
   return (
     <>
-      {/* MAIN PROFILE DRAWER (right) */}
       <Drawer
         anchor="right"
         open={open}
@@ -313,7 +304,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
           },
         }}
       >
-        {/* Header */}
         <Box sx={{ p: 2 }}>
           <Stack
             direction="row"
@@ -329,8 +319,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
           </Stack>
         </Box>
         <Divider />
-
-        {/* Profile summary */}
         <Box sx={{ p: 2 }}>
           {profile ? (
             <Stack spacing={0.5}>
@@ -374,7 +362,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
         <Divider />
 
-        {/* Booking history */}
         <Box sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
           <Stack spacing={2}>
             <Stack direction="row" alignItems="center" spacing={1}>
@@ -452,7 +439,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
         <Divider />
 
-        {/* Change password – compact section, open bottom drawer */}
         <Box sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
             <LockResetIcon fontSize="small" color="action" />
@@ -479,7 +465,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
 
         <Divider />
 
-        {/* Logout */}
         <Box sx={{ p: 2 }}>
           <Button
             fullWidth
@@ -494,7 +479,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         </Box>
       </Drawer>
 
-      {/* PASSWORD BOTTOM SHEET DRAWER */}
       <Drawer
         anchor="bottom"
         open={pwDrawerOpen}

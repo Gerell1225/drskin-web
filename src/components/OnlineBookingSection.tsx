@@ -209,30 +209,36 @@ const OnlineBookingSection: React.FC = () => {
           .order('id', { ascending: true }),
       ]);
 
-      if (branchesRes.error) console.error('Error loading branches:', branchesRes.error);
-      if (servicesRes.error) console.error('Error loading services:', servicesRes.error);
+      if (branchesRes.error)
+        console.error('Error loading branches:', branchesRes.error);
+      if (servicesRes.error)
+        console.error('Error loading services:', servicesRes.error);
 
-      const branchList: BranchRef[] = (branchesRes.data ?? []).map((row: any) => ({
-        id: row.id,
-        name: row.name ?? '',
-        capacitySkin: row.capacity_skin ?? 0,
-        capacityHair: row.capacity_hair ?? 0,
-      }));
-
-      const serviceList: ServiceRef[] = (servicesRes.data ?? []).map((row: any) => {
-        const prices = (row.service_branch_prices ?? []) as any[];
-        return {
+      const branchList: BranchRef[] = (branchesRes.data ?? []).map(
+        (row: any) => ({
           id: row.id,
           name: row.name ?? '',
-          category: (row.category ?? 'skin') as 'skin' | 'hair',
-          isActive: row.is_active ?? true,
-          branchPrices: prices.map((p: any) => ({
-            branchId: p.branch_id as number,
-            enabled: !!p.enabled,
-            price: p.price != null ? Number(p.price) : 0,
-          })),
-        };
-      });
+          capacitySkin: row.capacity_skin ?? 0,
+          capacityHair: row.capacity_hair ?? 0,
+        }),
+      );
+
+      const serviceList: ServiceRef[] = (servicesRes.data ?? []).map(
+        (row: any) => {
+          const prices = (row.service_branch_prices ?? []) as any[];
+          return {
+            id: row.id,
+            name: row.name ?? '',
+            category: (row.category ?? 'skin') as 'skin' | 'hair',
+            isActive: row.is_active ?? true,
+            branchPrices: prices.map((p: any) => ({
+              branchId: p.branch_id as number,
+              enabled: !!p.enabled,
+              price: p.price != null ? Number(p.price) : 0,
+            })),
+          };
+        },
+      );
 
       setBranches(branchList);
       setServices(serviceList);
@@ -258,7 +264,9 @@ const OnlineBookingSection: React.FC = () => {
     (bid: number, category: 'skin' | 'hair') => {
       const b = branches.find((br) => br.id === bid);
       if (!b) return 0;
-      return category === 'skin' ? (b.capacitySkin ?? 0) : (b.capacityHair ?? 0);
+      return category === 'skin'
+        ? (b.capacitySkin ?? 0)
+        : (b.capacityHair ?? 0);
     },
     [branches],
   );
@@ -267,7 +275,9 @@ const OnlineBookingSection: React.FC = () => {
     if (!branchId) return services.filter((s) => s.isActive);
     return services.filter((s) => {
       if (!s.isActive) return false;
-      return s.branchPrices.some((bp) => bp.branchId === branchId && bp.enabled);
+      return s.branchPrices.some(
+        (bp) => bp.branchId === branchId && bp.enabled,
+      );
     });
   }, [services, branchId]);
 
@@ -275,7 +285,9 @@ const OnlineBookingSection: React.FC = () => {
     if (!branchId || !serviceId) return null;
     const service = services.find((s) => s.id === serviceId);
     if (!service) return null;
-    const bp = service.branchPrices.find((p) => p.branchId === branchId && p.enabled);
+    const bp = service.branchPrices.find(
+      (p) => p.branchId === branchId && p.enabled,
+    );
     return bp ? bp.price : null;
   }, [services, branchId, serviceId]);
 
@@ -361,7 +373,8 @@ const OnlineBookingSection: React.FC = () => {
           return slotMinutes > nowMinutes;
         });
 
-      if (available.length === 0) setSlotsError('Сонгосон өдөр сул цаг байхгүй байна.');
+      if (available.length === 0)
+        setSlotsError('Сонгосон өдөр сул цаг байхгүй байна.');
 
       setTimeSlots(available);
       setLoadingSlots(false);
@@ -396,7 +409,9 @@ const OnlineBookingSection: React.FC = () => {
     }
 
     if (!selectedPrice) {
-      setFormError('Сонгосон салбарт энэ үйлчилгээ онлайнаар авах боломжгүй байна.');
+      setFormError(
+        'Сонгосон салбарт энэ үйлчилгээ онлайнаар авах боломжгүй байна.',
+      );
       return;
     }
 
@@ -457,7 +472,8 @@ const OnlineBookingSection: React.FC = () => {
           out?.detail?.message ||
           (typeof out?.detail === 'string' ? out.detail : null) ||
           'Алдаа гарлаа.';
-        if (out?.error === 'CAPACITY_FULL') setFormError('Энэ цаг дүүрсэн байна. Өөр цаг сонгоно уу.');
+        if (out?.error === 'CAPACITY_FULL')
+          setFormError('Энэ цаг дүүрсэн байна. Өөр цаг сонгоно уу.');
         else setFormError(msg);
         return;
       }
@@ -519,25 +535,20 @@ const OnlineBookingSection: React.FC = () => {
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
               Dr.Skin &amp; Dr.Hair салбаруудад онлайнаар захиалга өгөхийн тулд
-              Dr.Skin аккаунтаараа нэвтэрч, салбар, үйлчилгээ, өдөр, цагийг сонгон
-              захиалгаа илгээнэ үү.
+              Dr.Skin аккаунтаараа нэвтэрч, салбар, үйлчилгээ, өдөр, цагийг
+              сонгон захиалгаа илгээнэ үү.
             </Typography>
-
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              <Chip
-                label="Онлайн захиалга + QPay төлбөр"
-                variant="outlined"
-                sx={{ maxWidth: 'fit-content' }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Захиалга эхлээд <strong>&quot;Төлбөр хүлээгдэж&quot;</strong> төлөвтэй үүснэ.
-                Төлбөр хийгдэхэд захиалга баталгаажина.
-              </Typography>
-            </Stack>
           </Box>
 
           <Box sx={{ flex: 1, maxWidth: 480, width: '100%' }}>
-            <Card sx={{ borderRadius: 3, boxShadow: 4, position: 'relative', overflow: 'hidden' }}>
+            <Card
+              sx={{
+                borderRadius: 3,
+                boxShadow: 4,
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
               <CardContent sx={{ p: 3 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
                   Онлайн захиалгын мэдээлэл
@@ -566,7 +577,10 @@ const OnlineBookingSection: React.FC = () => {
                           value={branchId ?? ''}
                           onChange={(e) => {
                             resetMessages();
-                            const val = e.target.value === '' ? null : Number(e.target.value);
+                            const val =
+                              e.target.value === ''
+                                ? null
+                                : Number(e.target.value);
                             setBranchId(val);
                             setTime(null);
                           }}
@@ -580,14 +594,19 @@ const OnlineBookingSection: React.FC = () => {
                       </FormControl>
 
                       <FormControl fullWidth size="small">
-                        <InputLabel id="service-select-label">Үйлчилгээ</InputLabel>
+                        <InputLabel id="service-select-label">
+                          Үйлчилгээ
+                        </InputLabel>
                         <Select
                           labelId="service-select-label"
                           label="Үйлчилгээ"
                           value={serviceId ?? ''}
                           onChange={(e) => {
                             resetMessages();
-                            const val = e.target.value === '' ? null : Number(e.target.value);
+                            const val =
+                              e.target.value === ''
+                                ? null
+                                : Number(e.target.value);
                             setServiceId(val);
                             setTime(null);
                           }}
@@ -627,14 +646,19 @@ const OnlineBookingSection: React.FC = () => {
                       />
 
                       <FormControl fullWidth size="small">
-                        <InputLabel id="time-select-label">Цаг (11:00 – 19:00)</InputLabel>
+                        <InputLabel id="time-select-label">
+                          Цаг (11:00 – 19:00)
+                        </InputLabel>
                         <Select
                           labelId="time-select-label"
                           label="Цаг (11:00 – 19:00)"
                           value={time ?? ''}
                           onChange={(e) => {
                             resetMessages();
-                            const val = e.target.value === '' ? null : (e.target.value as string);
+                            const val =
+                              e.target.value === ''
+                                ? null
+                                : (e.target.value as string);
                             setTime(val);
                           }}
                         >
@@ -650,13 +674,17 @@ const OnlineBookingSection: React.FC = () => {
                             </MenuItem>
                           )}
 
-                          {!loadingSlots && !slotsError && timeSlots.length === 0 && (
-                            <MenuItem value="" disabled>
-                              Энэ өдөр сул цаг алга байна.
-                            </MenuItem>
-                          )}
+                          {!loadingSlots &&
+                            !slotsError &&
+                            timeSlots.length === 0 && (
+                              <MenuItem value="" disabled>
+                                Энэ өдөр сул цаг алга байна.
+                              </MenuItem>
+                            )}
 
-                          {!loadingSlots && !slotsError && timeSlots.length > 0 &&
+                          {!loadingSlots &&
+                            !slotsError &&
+                            timeSlots.length > 0 &&
                             timeSlots.map((slot) => (
                               <MenuItem key={slot.time} value={slot.time}>
                                 {slot.time} ({slot.remaining} хүн боломжтой)
@@ -680,7 +708,11 @@ const OnlineBookingSection: React.FC = () => {
                     />
 
                     <Box sx={{ mt: 1 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 0.5 }}
+                      >
                         Үнийн мэдээлэл:
                       </Typography>
                       {selectedPrice ? (
@@ -692,23 +724,40 @@ const OnlineBookingSection: React.FC = () => {
                         </Typography>
                       ) : (
                         <Typography variant="body2" color="text.secondary">
-                          Сонгосон салбар дээр энэ үйлчилгээ онлайнаар авах боломжгүй байна.
+                          Сонгосон салбар дээр энэ үйлчилгээ онлайнаар авах
+                          боломжгүй байна.
                         </Typography>
                       )}
                     </Box>
 
-                    {capacityError && <Alert severity="warning">{capacityError}</Alert>}
+                    {capacityError && (
+                      <Alert severity="warning">{capacityError}</Alert>
+                    )}
                     {formError && <Alert severity="error">{formError}</Alert>}
-                    {successMsg && <Alert severity="success">{successMsg}</Alert>}
+                    {successMsg && (
+                      <Alert severity="success">{successMsg}</Alert>
+                    )}
 
                     <Button
                       variant="contained"
                       color="primary"
-                      sx={{ mt: 1, borderRadius: 999, textTransform: 'none', py: 1 }}
+                      sx={{
+                        mt: 1,
+                        borderRadius: 999,
+                        textTransform: 'none',
+                        py: 1,
+                      }}
                       onClick={handleSubmit}
-                      disabled={submitting || loadingInitial || branches.length === 0 || !date}
+                      disabled={
+                        submitting ||
+                        loadingInitial ||
+                        branches.length === 0 ||
+                        !date
+                      }
                     >
-                      {submitting ? 'Төлбөр үүсгэж байна...' : 'Онлайн захиалга + төлбөр'}
+                      {submitting
+                        ? 'захиалга үүсгэж байна...'
+                        : 'Онлайн захиалга'}
                     </Button>
                   </Stack>
                 )}
@@ -747,7 +796,11 @@ const OnlineBookingSection: React.FC = () => {
         </Stack>
       </Container>
 
-      <LoginDialog open={loginOpen} onClose={handleCloseLogin} onLoggedIn={handleLoggedIn} />
+      <LoginDialog
+        open={loginOpen}
+        onClose={handleCloseLogin}
+        onLoggedIn={handleLoggedIn}
+      />
     </Box>
   );
 };
