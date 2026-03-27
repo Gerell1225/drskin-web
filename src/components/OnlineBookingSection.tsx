@@ -14,7 +14,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   Alert,
 } from '@mui/material';
 import { supabase } from '@/lib/supabaseClient';
@@ -373,8 +372,9 @@ const OnlineBookingSection: React.FC = () => {
           return slotMinutes > nowMinutes;
         });
 
-      if (available.length === 0)
+      if (available.length === 0) {
         setSlotsError('Сонгосон өдөр сул цаг байхгүй байна.');
+      }
 
       setTimeSlots(available);
       setLoadingSlots(false);
@@ -472,23 +472,18 @@ const OnlineBookingSection: React.FC = () => {
           out?.detail?.message ||
           (typeof out?.detail === 'string' ? out.detail : null) ||
           'Алдаа гарлаа.';
-        if (out?.error === 'CAPACITY_FULL')
+
+        if (out?.error === 'CAPACITY_FULL') {
           setFormError('Энэ цаг дүүрсэн байна. Өөр цаг сонгоно уу.');
-        else setFormError(msg);
+        } else {
+          setFormError(msg);
+        }
         return;
       }
 
-      const checkoutUrl = out?.checkoutUrl as string | undefined;
-      if (!checkoutUrl) {
-        setFormError('Төлбөрийн холбоос олдсонгүй.');
-        return;
-      }
-
-      setSuccessMsg('Захиалга үүслээ. Төлбөрийн хуудас руу шилжиж байна...');
+      setSuccessMsg('Захиалга амжилттай үүслээ.');
       setPeopleCount('1');
       setTime(null);
-
-      window.location.assign(checkoutUrl);
     } catch (e: any) {
       setFormError(e?.message || 'Сервертэй холбогдоход алдаа гарлаа.');
     } finally {
