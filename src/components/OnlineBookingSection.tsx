@@ -14,7 +14,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Chip,
   Alert,
 } from '@mui/material';
 import { supabase } from '@/lib/supabaseClient';
@@ -68,11 +67,23 @@ const generateTimeSlots = (): string[] => {
   for (let hour = 11; hour <= 19; hour++) {
     const h = hour.toString().padStart(2, '0');
     slots.push(`${h}:00`);
-    if (hour !== 19) {
-      slots.push(`${h}:30`);
-    }
+    if (hour !== 19) slots.push(`${h}:30`);
   }
   return slots;
+};
+
+const clampPeople = (val: string) => {
+  const n = Number(val);
+  if (!Number.isFinite(n) || n < 1) return '1';
+  if (n > 6) return '6';
+  return String(Math.floor(n));
+};
+
+const readJsonOrThrow = async (res: Response) => {
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return res.json();
+  const text = await res.text();
+  throw new Error(`Non-JSON response ${res.status}: ${text.slice(0, 200)}`);
 };
 
 const OnlineBookingSection: React.FC = () => {
@@ -92,9 +103,8 @@ const OnlineBookingSection: React.FC = () => {
   const [loadingSlots, setLoadingSlots] = React.useState(false);
   const [slotsError, setSlotsError] = React.useState<string | null>(null);
 
-  const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
-
-  const [date, setDate] = React.useState(today);
+  const [today, setToday] = React.useState('');
+  const [date, setDate] = React.useState('');
   const [time, setTime] = React.useState<string | null>(null);
   const [branchId, setBranchId] = React.useState<number | null>(null);
   const [serviceId, setServiceId] = React.useState<number | null>(null);
@@ -104,9 +114,19 @@ const OnlineBookingSection: React.FC = () => {
   const [capacityError, setCapacityError] = React.useState<string | null>(null);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
-  // ─────────────────────────────
-  // AUTH – user + listen changes
-  // ─────────────────────────────
+  React.useEffect(() => {
+    const t = new Date().toISOString().slice(0, 10);
+    setToday(t);
+    setDate((prev) => prev || t);
+  }, []);
+
+  const resetMessages = React.useCallback(() => {
+    setFormError(null);
+    setCapacityError(null);
+    setSuccessMsg(null);
+    setSlotsError(null);
+  }, []);
+
   React.useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
@@ -129,15 +149,9 @@ const OnlineBookingSection: React.FC = () => {
       setAuthUser(user ?? null);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  // ─────────────────────────────
-  // Load customer profile from DB
-  // customers.id = authUser.id
-  // ─────────────────────────────
   React.useEffect(() => {
     const loadCustomerProfile = async () => {
       if (!authUser) {
@@ -167,9 +181,6 @@ const OnlineBookingSection: React.FC = () => {
     loadCustomerProfile();
   }, [authUser]);
 
-  // ─────────────────────────────
-  // LOAD branches + services
-  // ─────────────────────────────
   React.useEffect(() => {
     const loadData = async () => {
       setLoadingInitial(true);
@@ -197,12 +208,10 @@ const OnlineBookingSection: React.FC = () => {
           .order('id', { ascending: true }),
       ]);
 
-      if (branchesRes.error) {
+      if (branchesRes.error)
         console.error('Error loading branches:', branchesRes.error);
-      }
-      if (servicesRes.error) {
+      if (servicesRes.error)
         console.error('Error loading services:', servicesRes.error);
-      }
 
       const branchList: BranchRef[] = (branchesRes.data ?? []).map(
         (row: any) => ({
@@ -216,7 +225,6 @@ const OnlineBookingSection: React.FC = () => {
       const serviceList: ServiceRef[] = (servicesRes.data ?? []).map(
         (row: any) => {
           const prices = (row.service_branch_prices ?? []) as any[];
-
           return {
             id: row.id,
             name: row.name ?? '',
@@ -234,46 +242,36 @@ const OnlineBookingSection: React.FC = () => {
       setBranches(branchList);
       setServices(serviceList);
 
-      if (branchList[0] && branchId == null) {
-        setBranchId(branchList[0].id);
-      }
-      if (serviceList[0] && serviceId == null) {
-        setServiceId(serviceList[0].id);
-      }
+      setBranchId((prev) => prev ?? branchList[0]?.id ?? null);
+      setServiceId((prev) => prev ?? serviceList[0]?.id ?? null);
 
       setLoadingInitial(false);
     };
 
     loadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const resetMessages = () => {
-    setFormError(null);
-    setCapacityError(null);
-    setSuccessMsg(null);
-    setSlotsError(null);
-  };
+  const getServiceCategory = React.useCallback(
+    (sid: number): 'skin' | 'hair' => {
+      const s = services.find((srv) => srv.id === sid);
+      return (s?.category ?? 'skin') as 'skin' | 'hair';
+    },
+    [services],
+  );
 
-  const getServiceCategory = (sid: number): 'skin' | 'hair' => {
-    const s = services.find((srv) => srv.id === sid);
-    return (s?.category ?? 'skin') as 'skin' | 'hair';
-  };
-
-  const getBranchCapacityForCategory = (
-    bid: number,
-    category: 'skin' | 'hair',
-  ) => {
-    const b = branches.find((br) => br.id === bid);
-    if (!b) return 0;
-    return category === 'skin' ? (b.capacitySkin ?? 0) : (b.capacityHair ?? 0);
-  };
+  const getBranchCapacityForCategory = React.useCallback(
+    (bid: number, category: 'skin' | 'hair') => {
+      const b = branches.find((br) => br.id === bid);
+      if (!b) return 0;
+      return category === 'skin'
+        ? (b.capacitySkin ?? 0)
+        : (b.capacityHair ?? 0);
+    },
+    [branches],
+  );
 
   const availableServices = React.useMemo(() => {
-    if (!branchId) {
-      return services.filter((s) => s.isActive);
-    }
-
+    if (!branchId) return services.filter((s) => s.isActive);
     return services.filter((s) => {
       if (!s.isActive) return false;
       return s.branchPrices.some(
@@ -292,16 +290,15 @@ const OnlineBookingSection: React.FC = () => {
     return bp ? bp.price : null;
   }, [services, branchId, serviceId]);
 
-  const totalAmount = React.useMemo(() => {
+  const totalAmountPreview = React.useMemo(() => {
     if (!selectedPrice) return null;
     const people = Number(peopleCount) || 1;
     return selectedPrice * people;
   }, [selectedPrice, peopleCount]);
 
-  // ─────────────────────────────
-  // LOAD available time slots for selected day/branch/service
-  // ─────────────────────────────
   React.useEffect(() => {
+    const abort = new AbortController();
+
     const loadSlots = async () => {
       setTimeSlots([]);
       setSlotsError(null);
@@ -327,7 +324,10 @@ const OnlineBookingSection: React.FC = () => {
         .select('time, people_count, service_id, status')
         .eq('branch_id', branchId)
         .eq('date', date)
-        .neq('status', 'cancelled');
+        .neq('status', 'cancelled')
+        .abortSignal(abort.signal);
+
+      if (abort.signal.aborted) return;
 
       if (error) {
         console.error('Error loading slots bookings:', error);
@@ -337,8 +337,8 @@ const OnlineBookingSection: React.FC = () => {
       }
 
       const list = (data ?? []) as any[];
-
       const counts: Record<string, number> = {};
+
       list.forEach((row) => {
         const bookedService = services.find((s) => s.id === row.service_id);
         if (!bookedService) return;
@@ -354,8 +354,7 @@ const OnlineBookingSection: React.FC = () => {
       const allSlots = generateTimeSlots();
 
       const now = new Date();
-      const todayStr = today;
-      const isToday = date === todayStr;
+      const isToday = today ? date === today : false;
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
       const available: TimeSlot[] = allSlots
@@ -366,13 +365,11 @@ const OnlineBookingSection: React.FC = () => {
         })
         .filter((slot) => {
           if (slot.remaining <= 0) return false;
-          if (isToday) {
-            const [h, m] = slot.time.split(':');
-            const slotMinutes =
-              parseInt(h || '0', 10) * 60 + parseInt(m || '0', 10);
-            return slotMinutes > nowMinutes;
-          }
-          return true;
+          if (!isToday) return true;
+          const [h, m] = slot.time.split(':');
+          const slotMinutes =
+            parseInt(h || '0', 10) * 60 + parseInt(m || '0', 10);
+          return slotMinutes > nowMinutes;
         });
 
       if (available.length === 0) {
@@ -383,76 +380,21 @@ const OnlineBookingSection: React.FC = () => {
       setLoadingSlots(false);
     };
 
-    if (!loadingInitial) {
-      loadSlots();
-    }
-  }, [branchId, serviceId, date, loadingInitial, services, today]);
+    if (!loadingInitial) loadSlots();
 
-  // ─────────────────────────────
-  // CAPACITY CHECK
-  // ─────────────────────────────
-  const checkCapacity = async (): Promise<boolean> => {
-    setCapacityError(null);
+    return () => abort.abort();
+  }, [
+    branchId,
+    serviceId,
+    date,
+    loadingInitial,
+    services,
+    today,
+    getServiceCategory,
+    getBranchCapacityForCategory,
+  ]);
 
-    if (!branchId || !serviceId || !date || !time) return false;
-
-    const category = getServiceCategory(serviceId);
-    const capacity = getBranchCapacityForCategory(branchId, category);
-    const people = Number(peopleCount) || 1;
-
-    if (capacity <= 0) {
-      setCapacityError(
-        category === 'skin'
-          ? 'Энэ салбарт арьсны үйлчилгээний багтаамж 0 байна.'
-          : 'Энэ салбарт үсний үйлчилгээний багтаамж 0 байна.',
-      );
-      return false;
-    }
-
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('people_count, service_id, status')
-      .eq('branch_id', branchId)
-      .eq('date', date)
-      .eq('time', time)
-      .neq('status', 'cancelled');
-
-    if (error) {
-      console.error('Error checking capacity:', error);
-      setCapacityError(
-        'Багтаамж шалгахад алдаа гарлаа. Та түр хүлээгээд дахин оролдоно уу.',
-      );
-      return false;
-    }
-
-    const currentLoad =
-      (data ?? [])
-        .filter(
-          (row: any) =>
-            getServiceCategory(row.service_id as number) === category,
-        )
-        .reduce(
-          (sum: number, row: any) =>
-            sum + (row.people_count != null ? Number(row.people_count) : 1),
-          0,
-        ) || 0;
-
-    const total = currentLoad + people;
-
-    if (total > capacity) {
-      setCapacityError(
-        `Энэ цагт багтаамж дүүрсэн байна. Одоогоийн захиалга: ${currentLoad}/${capacity} хүн. Танай ${people} хүнийг нэмбэл ${total}/${capacity} болно.`,
-      );
-      return false;
-    }
-
-    return true;
-  };
-
-  // ─────────────────────────────
-  // SUBMIT BOOKING
-  // ─────────────────────────────
-  const handleSubmit = async () => {
+  const handleSubmit = React.useCallback(async () => {
     resetMessages();
 
     if (!isLoggedIn || !authUser) {
@@ -475,10 +417,8 @@ const OnlineBookingSection: React.FC = () => {
 
     const people = Number(peopleCount) || 1;
 
-    // Ensure we have name + phone
     const dbName = customerProfile?.fullName?.trim();
     const dbPhone = customerProfile?.phone?.trim();
-
     const metaName = authUser.user_metadata?.full_name?.trim();
     const metaPhone = authUser.user_metadata?.phone?.trim();
     const authPhone = authUser.phone?.trim();
@@ -491,61 +431,77 @@ const OnlineBookingSection: React.FC = () => {
     const phone = dbPhone || metaPhone || authPhone || '';
 
     if (!phone) {
-      setFormError(
-        'Таны профайл дээр утасны дугаар бүртгэгдээгүй байна. Салонтой холбогдож мэдээллээ шинэчлэнэ үү.',
-      );
+      setFormError('Таны профайл дээр утасны дугаар бүртгэгдээгүй байна.');
       return;
     }
 
-    const ok = await checkCapacity();
-    if (!ok) return;
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
 
-    const payload = {
-      date,
-      time,
-      branch_id: branchId,
-      service_id: serviceId,
-      customer_name: fullName,
-      customer_phone: phone,
-      people_count: people,
-      channel: 'online',
-      status: 'pending',
-      total_amount: totalAmount,
-      payment_status: 'pending',
-    };
+    if (!accessToken) {
+      setFormError('Нэвтрэлт баталгаажаагүй байна. Дахин нэвтэрч оролдоно уу.');
+      setLoginOpen(true);
+      return;
+    }
 
     setSubmitting(true);
 
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert(payload)
-        .select('id')
-        .single();
+      const res = await fetch('/api/bookings/online/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          date,
+          time,
+          branchId,
+          serviceId,
+          peopleCount: people,
+          customerName: fullName,
+          customerPhone: phone,
+        }),
+      });
 
-      if (error || !data) {
-        console.error('Online booking insert error:', error);
-        setFormError(
-          'Захиалга үүсгэхэд алдаа гарлаа. Та түр хүлээгээд дахин оролдоно уу.',
-        );
+      const out = await readJsonOrThrow(res);
+
+      if (!res.ok) {
+        const msg =
+          out?.message ||
+          out?.detail?.message ||
+          (typeof out?.detail === 'string' ? out.detail : null) ||
+          'Алдаа гарлаа.';
+
+        if (out?.error === 'CAPACITY_FULL') {
+          setFormError('Энэ цаг дүүрсэн байна. Өөр цаг сонгоно уу.');
+        } else {
+          setFormError(msg);
+        }
         return;
       }
 
-      setSuccessMsg(
-        'Таны онлайн захиалга амжилттай бүртгэгдлээ. 30 минутын дотор QPay-ээр төлбөр хийгдээгүй тохиолдолд захиалга автоматаар цуцлагдана.',
-      );
-
+      setSuccessMsg('Захиалга амжилттай үүслээ.');
       setPeopleCount('1');
       setTime(null);
+    } catch (e: any) {
+      setFormError(e?.message || 'Сервертэй холбогдоход алдаа гарлаа.');
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [
+    resetMessages,
+    isLoggedIn,
+    authUser,
+    branchId,
+    serviceId,
+    date,
+    time,
+    selectedPrice,
+    peopleCount,
+    customerProfile,
+  ]);
 
-  // ─────────────────────────────
-  // LOGIN DIALOG
-  // ─────────────────────────────
-  const handleOpenLogin = () => setLoginOpen(true);
   const handleCloseLogin = () => setLoginOpen(false);
 
   const handleLoggedIn = async () => {
@@ -560,24 +516,14 @@ const OnlineBookingSection: React.FC = () => {
     }
   };
 
-  // ─────────────────────────────
-  // RENDER
-  // ─────────────────────────────
   return (
-    <Box
-      id="online-booking"
-      sx={{
-        py: { xs: 6, md: 8 },
-        bgcolor: '#ffffff',
-      }}
-    >
+    <Box id="online-booking" sx={{ py: { xs: 6, md: 8 }, bgcolor: '#ffffff' }}>
       <Container maxWidth="lg">
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={4}
           alignItems={{ xs: 'stretch', md: 'flex-start' }}
         >
-          {/* Left text */}
           <Box sx={{ flex: 1 }}>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
               Онлайн цаг авах
@@ -587,26 +533,12 @@ const OnlineBookingSection: React.FC = () => {
               Dr.Skin аккаунтаараа нэвтэрч, салбар, үйлчилгээ, өдөр, цагийг
               сонгон захиалгаа илгээнэ үү.
             </Typography>
-
-            <Stack spacing={1} sx={{ mt: 2 }}>
-              <Chip
-                label="Онлайн захиалга + QPay төлбөр"
-                variant="outlined"
-                sx={{ maxWidth: 'fit-content' }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                Захиалга эхлээд <strong>&quot;Төлбөр хүлээгдэж&quot;</strong>{' '}
-                төлөвтэй үүснэ. 30 минутын дотор QPay-ээр төлбөр хийгдээгүй
-                тохиолдолд захиалга автоматаар цуцлагдана.
-              </Typography>
-            </Stack>
           </Box>
 
-          {/* Right card */}
           <Box sx={{ flex: 1, maxWidth: 480, width: '100%' }}>
             <Card
               sx={{
-                borderRadius: 4,
+                borderRadius: 3,
                 boxShadow: 4,
                 position: 'relative',
                 overflow: 'hidden',
@@ -631,7 +563,6 @@ const OnlineBookingSection: React.FC = () => {
 
                 {!loadingInitial && branches.length > 0 && (
                   <Stack spacing={2}>
-                    {/* Branch + Service */}
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                       <FormControl fullWidth size="small">
                         <InputLabel id="branch-select-label">Салбар</InputLabel>
@@ -676,15 +607,12 @@ const OnlineBookingSection: React.FC = () => {
                           }}
                         >
                           {availableServices.map((s) => {
-                            // Show price in label if available for this branch
                             const bp = s.branchPrices.find(
                               (p) => p.branchId === branchId && p.enabled,
                             );
                             const label =
                               bp && bp.price
-                                ? `${s.name} (${bp.price.toLocaleString(
-                                    'en-US',
-                                  )} ₮)`
+                                ? `${s.name} (${bp.price.toLocaleString('en-US')} ₮)`
                                 : s.name;
                             return (
                               <MenuItem key={s.id} value={s.id}>
@@ -696,7 +624,6 @@ const OnlineBookingSection: React.FC = () => {
                       </FormControl>
                     </Stack>
 
-                    {/* Date + Time */}
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                       <TextField
                         label="Өдөр"
@@ -710,7 +637,7 @@ const OnlineBookingSection: React.FC = () => {
                         }}
                         fullWidth
                         InputLabelProps={{ shrink: true }}
-                        inputProps={{ min: today }}
+                        inputProps={today ? { min: today } : undefined}
                       />
 
                       <FormControl fullWidth size="small">
@@ -762,7 +689,6 @@ const OnlineBookingSection: React.FC = () => {
                       </FormControl>
                     </Stack>
 
-                    {/* People */}
                     <TextField
                       label="Хүний тоо"
                       type="number"
@@ -770,13 +696,12 @@ const OnlineBookingSection: React.FC = () => {
                       value={peopleCount}
                       onChange={(e) => {
                         resetMessages();
-                        setPeopleCount(e.target.value);
+                        setPeopleCount(clampPeople(e.target.value));
                       }}
                       inputProps={{ min: 1, max: 6 }}
                       fullWidth
                     />
 
-                    {/* Price summary */}
                     <Box sx={{ mt: 1 }}>
                       <Typography
                         variant="body2"
@@ -788,8 +713,8 @@ const OnlineBookingSection: React.FC = () => {
                       {selectedPrice ? (
                         <Typography variant="body1" sx={{ fontWeight: 600 }}>
                           {selectedPrice.toLocaleString('en-US')} ₮ / хүн •{' '}
-                          {totalAmount != null
-                            ? `${totalAmount.toLocaleString('en-US')} ₮ нийт`
+                          {totalAmountPreview != null
+                            ? `${totalAmountPreview.toLocaleString('en-US')} ₮ нийт`
                             : ''}
                         </Typography>
                       ) : (
@@ -819,12 +744,15 @@ const OnlineBookingSection: React.FC = () => {
                       }}
                       onClick={handleSubmit}
                       disabled={
-                        submitting || loadingInitial || branches.length === 0
+                        submitting ||
+                        loadingInitial ||
+                        branches.length === 0 ||
+                        !date
                       }
                     >
                       {submitting
-                        ? 'Захиалга илгээж байна...'
-                        : 'Онлайн захиалга илгээх'}
+                        ? 'захиалга үүсгэж байна...'
+                        : 'Онлайн захиалга'}
                     </Button>
                   </Stack>
                 )}
@@ -851,12 +779,8 @@ const OnlineBookingSection: React.FC = () => {
                   <Button
                     variant="contained"
                     color="primary"
-                    sx={{
-                      borderRadius: 999,
-                      textTransform: 'none',
-                      px: 4,
-                    }}
-                    onClick={handleOpenLogin}
+                    sx={{ borderRadius: 999, textTransform: 'none', px: 4 }}
+                    onClick={() => setLoginOpen(true)}
                   >
                     Нэвтрэх
                   </Button>

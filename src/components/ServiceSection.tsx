@@ -142,7 +142,7 @@ const ServicesSection: React.FC = () => {
                     minWidth: 260,
                     maxWidth: 280,
                     flex: '0 0 auto',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     boxShadow: 3,
                   }}
                 >
@@ -168,7 +168,7 @@ const ServicesSection: React.FC = () => {
                     minWidth: 260,
                     maxWidth: 280,
                     flex: '0 0 auto',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     boxShadow: 3,
                     transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                     ':hover': {

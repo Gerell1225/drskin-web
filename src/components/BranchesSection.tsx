@@ -68,7 +68,7 @@ const BranchesSection: React.FC = () => {
               Манай салбарууд
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Хотын гол бүсүүдэд байрлах Dr.Skin &amp; Dr.Hair салбаруудаа
+              Хотын гол бүсүүдэд байрлах Dr.Skin &amp; Dr.Hair салбаруудаас
               сонгон үйлчлүүлээрэй.
             </Typography>
           </Box>
@@ -96,7 +96,7 @@ const BranchesSection: React.FC = () => {
                     minWidth: 280,
                     maxWidth: 320,
                     flex: '0 0 auto',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     boxShadow: 3,
                   }}
                 >
@@ -124,7 +124,7 @@ const BranchesSection: React.FC = () => {
                     minWidth: 280,
                     maxWidth: 320,
                     flex: '0 0 auto',
-                    borderRadius: 4,
+                    borderRadius: 3,
                     boxShadow: 3,
                   }}
                 >
