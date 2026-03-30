@@ -67,7 +67,7 @@ const generateTimeSlots = (): string[] => {
   for (let hour = 11; hour <= 19; hour++) {
     const h = hour.toString().padStart(2, '0');
     slots.push(`${h}:00`);
-    // if (hour !== 19) slots.push(`${h}:30`);
+    slots.push(`${h}:30`);
   }
   return slots;
 };
