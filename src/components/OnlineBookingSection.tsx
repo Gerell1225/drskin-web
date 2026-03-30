@@ -642,11 +642,11 @@ const OnlineBookingSection: React.FC = () => {
 
                       <FormControl fullWidth size="small">
                         <InputLabel id="time-select-label">
-                          Цаг (11:00 – 19:00)
+                          Цаг (11:00 – 19:30)
                         </InputLabel>
                         <Select
                           labelId="time-select-label"
-                          label="Цаг (11:00 – 19:00)"
+                          label="Цаг (11:00 – 19:30)"
                           value={time ?? ''}
                           onChange={(e) => {
                             resetMessages();
